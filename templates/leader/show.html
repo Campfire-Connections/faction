@@ -1,0 +1,19 @@
+<!-- faction/templates/leader/show.html -->
+{% extends 'base/show.html' %}
+
+{% block object_details %}
+    <div class="leader-details">
+        <p><strong>Name:</strong> {{ leader.get_full_name }}</p>
+        <p><strong>Address:</strong> {{ leader.address }}</p>
+
+        {% if leader.profile.faction %}
+        <p><strong>Faction:</strong> {{leader.profile.faction.abbreviation}}</p>
+        {% endif %}
+
+        {% if leader.profile %}
+        <h3>Profile Information</h3>
+        <p><strong>Faction (Profile):</strong> {{ leader.profile.faction.name }}</p>
+        <!-- Additional profile fields -->
+        {% endif %}
+    </div>
+{% endblock %}

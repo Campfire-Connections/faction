@@ -1,0 +1,52 @@
+{% extends 'base/list.html' %}
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load my_filters %}
+
+{% block content_content %}
+<div id="list">
+    {{ block.super }}
+
+    <style>
+        section.card {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #manage h2 {
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        #manage h2 a {
+            float: right;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        
+        table th {
+            background-color: #f4f4f4;
+        }
+
+        .actions {
+            max-width: 20px;
+        }
+    </style>
+
+    <section class="card">
+        {% render_table factions %}
+    </section>
+</div>
+{% endblock content_content %}

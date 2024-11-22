@@ -1,0 +1,18 @@
+{% extends 'base/list.html' %}
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load my_filters %}
+
+{% block content_heading %}{{content_header_text}}{% endblock content_heading %}
+
+{% block content_content %}
+<div id="list">
+    <section class="card">
+        {% if table %}
+            {% render_table table %}
+        {% else %}
+            <p>No data available to display.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock content_content %}

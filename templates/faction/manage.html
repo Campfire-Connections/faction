@@ -1,0 +1,29 @@
+<!--faction/templates/faction/manage.html-->
+{% extends "base/manage.html" %}
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load my_filters %}
+
+{% block title_text_focus %}{{ faction.name }}{% endblock title_text_focus %}
+
+{% block cards %}
+<div id="manage">
+    {{ block.super }}
+
+    {% for item in tables_with_names %}
+    <section class="card">
+        <h2>
+            {% pluralize_word item.name True %}
+            <a href="{{ item.create_url }}">
+                {% if item.icon %}
+                    <i class="fas {{ item.icon }}"></i>
+                {% else %}
+                    <i class="fas fa-plus"></i>
+                {% endif %}
+            </a>
+        </h2>
+        {% render_table item.table %}
+    </section>
+    {% endfor %}
+</div>
+{% endblock cards %}

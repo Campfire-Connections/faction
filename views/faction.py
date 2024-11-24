@@ -22,8 +22,8 @@ from enrollment.models.faction import FactionEnrollment
 from enrollment.tables.faction import FactionEnrollmentTable
 from user.models import User
 
-from pages.mixins.forms import FormValidMixin, SuccessMessageMixin
-from pages.mixins.models import SlugMixin, TrackChangesMixin, SoftDeleteMixin
+from core.mixins.forms import FormValidMixin, SuccessMessageMixin
+from core.mixins.models import SlugMixin, TrackChangesMixin, SoftDeleteMixin
 
 from ..models.faction import Faction
 from ..forms.faction import FactionForm, ChildFactionForm

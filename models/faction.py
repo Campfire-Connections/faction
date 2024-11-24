@@ -9,8 +9,8 @@ from django.forms import ValidationError
 from django.urls import reverse
 
 from user.models import User
-from pages.mixins import models as mixins
-from pages.mixins import settings as stgs
+from core.mixins import models as mixins
+from core.mixins import settings as stgs
 
 from ..managers.faction import FactionManager
 

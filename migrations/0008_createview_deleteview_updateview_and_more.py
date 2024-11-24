@@ -2,7 +2,7 @@
 
 import django.db.models.deletion
 import django.views.generic.edit
-import pages.mixins.forms
+import core.mixins.forms
 from django.conf import settings
 from django.db import migrations, models
 
@@ -41,8 +41,8 @@ class Migration(migrations.Migration):
                 "abstract": False,
             },
             bases=(
-                pages.mixins.forms.SuccessMessageMixin,
-                pages.mixins.forms.FormValidMixin,
+                core.mixins.forms.SuccessMessageMixin,
+                core.mixins.forms.FormValidMixin,
                 models.Model,
                 django.views.generic.edit.CreateView,
             ),
@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
             },
             bases=(
                 models.Model,
-                pages.mixins.forms.SuccessMessageMixin,
+                core.mixins.forms.SuccessMessageMixin,
                 django.views.generic.edit.DeleteView,
             ),
         ),
@@ -93,8 +93,8 @@ class Migration(migrations.Migration):
             },
             bases=(
                 models.Model,
-                pages.mixins.forms.SuccessMessageMixin,
-                pages.mixins.forms.FormValidMixin,
+                core.mixins.forms.SuccessMessageMixin,
+                core.mixins.forms.FormValidMixin,
                 django.views.generic.edit.UpdateView,
             ),
         ),

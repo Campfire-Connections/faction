@@ -1,7 +1,7 @@
 # faction/tables/faction.py
 
 import django_tables2 as tables
-from pages.mixins.tables import ActionsColumnMixin, ActionUrlMixin
+from core.mixins.tables import ActionsColumnMixin, ActionUrlMixin
 from ..models.faction import Faction
 
 

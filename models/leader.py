@@ -8,8 +8,8 @@ from django.dispatch import receiver
 from django.forms import ValidationError
 from django.urls import reverse
 
-from pages.mixins import models as mixins
-# from pages.mixins import settings as stgs
+from core.mixins import models as mixins
+# from core.mixins import settings as stgs
 from user.models import User, UserProfile
 
 # from organization.models import Organization

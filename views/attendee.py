@@ -14,7 +14,7 @@ from django.urls import reverse_lazy
 from django_tables2 import SingleTableView, SingleTableMixin
 from django.contrib.auth import get_user_model
 
-from pages.mixins.forms import SuccessMessageMixin, FormValidMixin
+from core.mixins.forms import SuccessMessageMixin, FormValidMixin
 from user.models import User
 from user.mixins import AdminRequiredMixin
 from organization.models.organization import (

@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
             },
             bases=(
                 core.mixins.forms.SuccessMessageMixin,
-                core.mixins.forms.FormValidMixin,
+                core.mixins.forms.FormValidationMixin,
                 models.Model,
                 django.views.generic.edit.CreateView,
             ),
@@ -94,7 +94,7 @@ class Migration(migrations.Migration):
             bases=(
                 models.Model,
                 core.mixins.forms.SuccessMessageMixin,
-                core.mixins.forms.FormValidMixin,
+                core.mixins.forms.FormValidationMixin,
                 django.views.generic.edit.UpdateView,
             ),
         ),

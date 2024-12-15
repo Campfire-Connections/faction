@@ -21,8 +21,7 @@ from organization.models.organization import Organization
 from enrollment.models.faction import FactionEnrollment
 from enrollment.tables.faction import FactionEnrollmentTable
 from user.models import User
-
-from core.mixins.forms import FormValidMixin, SuccessMessageMixin
+from core.mixins.forms import FormValidationMixin, SuccessMessageMixin
 from core.mixins.models import SlugMixin, TrackChangesMixin, SoftDeleteMixin
 
 from ..models.faction import Faction
@@ -33,20 +32,13 @@ from ..tables.leader import LeaderTable
 from ..tables.attendee import AttendeeTable
 
 
-
-
 class IndexView(_ListView):
     model = Faction
     template_name = "faction/index.html"
     context_object_name = "factions"
 
 
-class CreateView(
-    SlugMixin, 
-    SuccessMessageMixin, 
-    FormValidMixin, 
-    _CreateView
-):
+class CreateView(SlugMixin, SuccessMessageMixin, FormValidationMixin, _CreateView):
     model = Faction
     form_class = FactionForm
     template_name = "faction/form.html"
@@ -63,10 +55,7 @@ class CreateView(
 
 
 class UpdateView(
-    TrackChangesMixin, 
-    SuccessMessageMixin, 
-    FormValidMixin, 
-    _UpdateView
+    TrackChangesMixin, SuccessMessageMixin, FormValidationMixin, _UpdateView
 ):
     model = Faction
     form_class = FactionForm
@@ -79,11 +68,7 @@ class UpdateView(
         return super().form_valid(form)
 
 
-class DeleteView(
-    SoftDeleteMixin, 
-    SuccessMessageMixin, 
-    _DeleteView
-):
+class DeleteView(SoftDeleteMixin, SuccessMessageMixin, _DeleteView):
     model = Faction
     template_name = "faction/confirm_delete.html"
     success_message = "Faction deleted successfully!"
@@ -201,7 +186,7 @@ class ShowView(_DetailView):
     context_object_name = "faction"
 
 
-class CreateChildView(SuccessMessageMixin, FormValidMixin, _CreateView):
+class CreateChildView(SuccessMessageMixin, FormValidationMixin, _CreateView):
     model = Faction
     template_name = "faction/form.html"
     form_class = ChildFactionForm
@@ -210,22 +195,34 @@ class CreateChildView(SuccessMessageMixin, FormValidMixin, _CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         # Fetch the parent faction based on the URL slug and pass it to the form
-        parent_faction = get_object_or_404(Faction.objects.filter(slug=self.kwargs["slug"]))
-        kwargs['initial'] = {'parent': parent_faction, 'organization': parent_faction.organization}
+        parent_faction = get_object_or_404(
+            Faction.objects.filter(slug=self.kwargs["slug"])
+        )
+        kwargs["initial"] = {
+            "parent": parent_faction,
+            "organization": parent_faction.organization,
+        }
         return kwargs
 
     def form_valid(self, form):
         """Set parent faction and organization from the parent."""
-        parent_faction = get_object_or_404(Faction.objects.filter(slug=self.kwargs["slug"]))
+        parent_faction = get_object_or_404(
+            Faction.objects.filter(slug=self.kwargs["slug"])
+        )
         # Check if the parent faction has an associated organization
         if not parent_faction.organization:
-            messages.error(self.request, "The parent faction does not have an associated organization.")
-            return redirect(reverse_lazy('factions:manage'))  # Redirect to manage or some appropriate page
+            messages.error(
+                self.request,
+                "The parent faction does not have an associated organization.",
+            )
+            return redirect(
+                reverse_lazy("factions:manage")
+            )  # Redirect to manage or some appropriate page
 
         # Set the parent and organization fields
         form.instance.parent = parent_faction
         form.instance.organization = parent_faction.organization
-        
+
         return super().form_valid(form)
 
     def get_success_url(self):

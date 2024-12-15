@@ -9,23 +9,24 @@ from django.forms import ValidationError
 from django.urls import reverse
 
 from core.mixins import models as mixins
-# from core.mixins import settings as stgs
-from user.models import User, UserProfile
-#rom organization.models import Organization
 
-#from .faction import Faction
+# from core.mixins import settings as stgs
+from user.models import User, BaseUserProfile
+
+# rom organization.models import Organization
+
+# from .faction import Faction
 from ..managers.attendee import AttendeeManager
 
 
 class Attendee(
     User,
-    mixins.SlugMixin,
     mixins.TimestampMixin,
     mixins.SoftDeleteMixin,
     mixins.AuditMixin,
     mixins.ActiveMixin,
     mixins.ImageMixin,
-    #stgs.SettingsMixin,
+    # stgs.SettingsMixin,
 ):
     """Attendee Model."""
 
@@ -38,6 +39,7 @@ class Attendee(
     )
     # address = GenericRelation("address.Address", null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
+    attendees = AttendeeManager()
 
     def get_root_faction(self):
         if self.faction.parent:
@@ -53,18 +55,28 @@ class Attendee(
         return reverse("attendee_show", kwargs={"attendee_slug": self.slug})
 
     def get_fallback_chain(self):
-        return ['faction', 'faction.organization']
+        return ["faction", "faction.organization"]
 
 
-class AttendeeProfile(UserProfile): #, stgs.SettingsMixin):
+class AttendeeProfile(BaseUserProfile):
+    class Meta:
+        verbose_name = "Attendee Profile"
+        verbose_name_plural = "Attendee Profiles"
+
     faction = models.ForeignKey(
         "faction.Faction", on_delete=models.SET_NULL, null=True, blank=True
     )
-    
-    objects = AttendeeManager()
 
     def get_fallback_chain(self):
-        return ['faction', 'faction.organization']
+        return ["faction", "faction.organization"]
+
+    @property
+    def enrollments(self):
+        """
+        Dynamically fetch enrollments for this faculty member.
+        """
+        return AttendeeEnrollment.objects.filter(attendee=self.user)
+
 
 @receiver(post_save, sender=Attendee)
 def create_user_profile(sender, instance, created, **kwargs):

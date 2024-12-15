@@ -9,8 +9,9 @@ from django.forms import ValidationError
 from django.urls import reverse
 
 from core.mixins import models as mixins
+
 # from core.mixins import settings as stgs
-from user.models import User, UserProfile
+from user.models import User, BaseUserProfile
 
 # from organization.models import Organization
 
@@ -20,13 +21,12 @@ from ..managers.leader import LeaderManager
 
 class Leader(
     User,
-    mixins.SlugMixin,
     mixins.TimestampMixin,
     mixins.SoftDeleteMixin,
     mixins.AuditMixin,
     mixins.ActiveMixin,
     mixins.ImageMixin,
-    #stgs.SettingsMixin,
+    # stgs.SettingsMixin,
 ):
     user_type = User.UserType.LEADER
     faction = models.ForeignKey(
@@ -48,8 +48,19 @@ class Leader(
     def get_fallback_chain(self):
         return ["faction", "faction.organization"]
 
+    @property
+    def enrollments(self):
+        """
+        Dynamically fetch enrollments for this faculty member.
+        """
+        return LeaderEnrollment.objects.filter(leader=self.user)
 
-class LeaderProfile(UserProfile): #, stgs.SettingsMixin):
+
+class LeaderProfile(BaseUserProfile):
+    class Meta:
+        verbose_name = "Leader Profile"
+        verbose_name_plural = "Leader Profiles"
+
     faction = models.ForeignKey(
         "faction.Faction", on_delete=models.SET_NULL, null=True, blank=True
     )

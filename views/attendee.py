@@ -14,7 +14,7 @@ from django.urls import reverse_lazy
 from django_tables2 import SingleTableView, SingleTableMixin
 from django.contrib.auth import get_user_model
 
-from core.mixins.forms import SuccessMessageMixin, FormValidMixin
+from core.mixins.forms import SuccessMessageMixin, FormValidationMixin
 from user.models import User
 from user.mixins import AdminRequiredMixin
 from organization.models.organization import (
@@ -67,7 +67,9 @@ class IndexView(SingleTableView):
         )
 
 
-class CreateView(AdminRequiredMixin, SuccessMessageMixin, FormValidMixin, _CreateView):
+class CreateView(
+    AdminRequiredMixin, SuccessMessageMixin, FormValidationMixin, _CreateView
+):
     model = AttendeeProfile
     form_class = AttendeeForm
     template_name = "attendee/form.html"
@@ -80,7 +82,9 @@ class CreateView(AdminRequiredMixin, SuccessMessageMixin, FormValidMixin, _Creat
         return context
 
 
-class UpdateView(AdminRequiredMixin, SuccessMessageMixin, FormValidMixin, _UpdateView):
+class UpdateView(
+    AdminRequiredMixin, SuccessMessageMixin, FormValidationMixin, _UpdateView
+):
     model = AttendeeProfile
     form_class = AttendeeForm
     template_name = "attendee/form.html"
@@ -92,8 +96,10 @@ class UpdateView(AdminRequiredMixin, SuccessMessageMixin, FormValidMixin, _Updat
         context["action"] = "Edit"
         return context
 
+
 class PromoteView(_UpdateView):
     pass
+
 
 class DeleteView(AdminRequiredMixin, SuccessMessageMixin, _DeleteView):
     model = AttendeeProfile

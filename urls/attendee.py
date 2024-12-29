@@ -9,6 +9,7 @@ from faction.views.attendee import (
     DeleteView,
     PromoteView,
     ManageView,
+    DashboardView,
 )
 
 app_name = "attendees"
@@ -26,4 +27,6 @@ urlpatterns = [
     path("<slug:slug>/promote/", PromoteView.as_view(), name="promote"),
     path("manage/", ManageView.as_view(), name="manage"),
     path("enrollments/", include("enrollment.urls.attendee", namespace="enrollment")),
+    # Dashboard
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
 ]

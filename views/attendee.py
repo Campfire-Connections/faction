@@ -15,6 +15,7 @@ from django_tables2 import SingleTableView, SingleTableMixin
 from django.contrib.auth import get_user_model
 
 from core.mixins.forms import SuccessMessageMixin, FormValidationMixin
+from core.views.base import BaseDashboardView
 from user.models import User
 from user.mixins import AdminRequiredMixin
 from organization.models.organization import (
@@ -155,3 +156,31 @@ class ManageView(
             attendee_id = request.POST.get("attendee_id")
             return redirect("attendee:enroll", pk=attendee_id)
         return super().post(request, *args, **kwargs)
+
+
+class DashboardView(BaseDashboardView):
+    """
+    Dashboard for attendees.
+    """
+
+    template_name = "attendee/dashboard.html"
+    widgets = ["schedule_widget", "announcements_widget", "resources_widget"]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Example widgets data
+        context["schedule_widget"] = self.get_schedule_data()
+        context["announcements_widget"] = self.get_announcements_data()
+        context["resources_widget"] = self.get_resources_data()
+
+        return context
+
+    def get_schedule_data(self):
+        return ["Event 1", "Event 2"]
+
+    def get_announcements_data(self):
+        return ["Announcement 1", "Announcement 2"]
+
+    def get_resources_data(self):
+        return ["Resource 1", "Resource 2"]

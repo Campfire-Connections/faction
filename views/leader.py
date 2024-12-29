@@ -13,6 +13,7 @@ from django.views.generic import (
 from django.urls import reverse_lazy
 from django_tables2 import SingleTableView, SingleTableMixin
 
+from core.views.base import BaseDashboardView
 from user.models import User
 from user.mixins import AdminRequiredMixin
 from organization.models.organization import (
@@ -70,7 +71,7 @@ class IndexView(SingleTableView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['content_header_text'] = 'Leaders'
+        context["content_header_text"] = "Leaders"
         return context
 
 
@@ -82,23 +83,23 @@ class CreateView(AdminRequiredMixin, _CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if 'slug' in self.kwargs:
+        if "slug" in self.kwargs:
             # If a faction slug is provided, pass the faction to the context
-            context['faction'] = get_object_or_404(Faction, slug=self.kwargs['slug'])
+            context["faction"] = get_object_or_404(Faction, slug=self.kwargs["slug"])
         return context
 
     def form_valid(self, form):
-        if 'slug' in self.kwargs:
+        if "slug" in self.kwargs:
             # If creating a leader for a specific faction
-            faction = get_object_or_404(Faction, slug=self.kwargs['slug'])
+            faction = get_object_or_404(Faction, slug=self.kwargs["slug"])
             form.instance.faction = faction
         return super().form_valid(form)
 
     def get_success_url(self):
-        if 'slug' in self.kwargs:
+        if "slug" in self.kwargs:
             # Redirect to the faction leader list after creation
-            return reverse_lazy('factions:show', kwargs={'slug': self.kwargs['slug']})
-        return reverse_lazy('leaders:index')  # Redirect to global leader list
+            return reverse_lazy("factions:show", kwargs={"slug": self.kwargs["slug"]})
+        return reverse_lazy("leaders:index")  # Redirect to global leader list
 
 
 class UpdateView(AdminRequiredMixin, _UpdateView):
@@ -198,51 +199,29 @@ class LeaderViewSet(viewsets.ModelViewSet):
     serializer_class = LeaderSerializer
 
 
-def leader_index(request):
-    """Leader list view."""
+class DashboardView(BaseDashboardView):
+    """
+    Dashboard for leaders.
+    """
 
-    leaders = User.objects.filter(user_type=User.UserType.LEADER)
+    template_name = "leader/dashboard.html"
+    widgets = ["faction_management_widget", "reports_widget", "tasks_widget"]
 
-    return render(request, "leader/index.html", {"leaders": leaders})
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
 
+        # Example widgets data
+        context["faction_management_widget"] = self.get_faction_management_data()
+        context["reports_widget"] = self.get_reports_data()
+        context["tasks_widget"] = self.get_tasks_data()
 
-def leader_index_by_faction(request, faction_id=None, faction_slug=None):
-    """Leader list by Faction view."""
-    if faction_id:
-        faction = get_object_or_404(Faction, pk=faction_id)
-    else:
-        faction = get_object_or_404(Faction, slug=faction_slug)
+        return context
 
-    leaders = User.objects.filter(leaderprofile__faction=faction)
+    def get_faction_management_data(self):
+        return ["Team Member 1", "Team Member 2"]
 
-    return render(
-        request, "leader/index.html", {"leaders": leaders, "faction": faction}
-    )
+    def get_reports_data(self):
+        return ["Report 1", "Report 2"]
 
-
-def leader_index_by_organization(request, organization_id=None, organization_slug=None):
-    """Leader list by Organizaton view."""
-
-    if organization_id:
-        organization = get_object_or_404(Organization, pk=organization_id)
-    else:
-        organization = get_object_or_404(Organization, slug=organization_slug)
-
-    leaders = User.objects.filter(leaderprofile__organization=organization)
-
-    return render(
-        request,
-        "leader/index.html",
-        {"leaders": leaders, "organization": organization},
-    )
-
-
-def leader_show(request, leader_id=None, leader_slug=None):
-    """Leader details view."""
-
-    if leader_id:
-        leader = get_object_or_404(User, pk=leader_id)
-    else:
-        leader = get_object_or_404(User, slug=leader_slug)
-
-    return render(request, "leader/show.html", {"leader": leader})
+    def get_tasks_data(self):
+        return ["Task 1", "Task 2"]

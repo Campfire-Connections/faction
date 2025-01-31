@@ -11,6 +11,7 @@ from django.urls import reverse
 from user.models import User
 from core.mixins import models as mixins
 from core.mixins import settings as stgs
+from enrollment.models.faction import FactionEnrollment
 
 from ..managers.faction import FactionManager
 
@@ -35,6 +36,13 @@ class Faction(
     )
 
     objects = FactionManager()
+
+    @property
+    def enrollments(self):
+        """
+        Dynamically fetch enrollments for this faction.
+        """
+        return FactionEnrollment.objects.filter(faction=self)
 
     def __str__(self):
         return f"{self.organization.abbreviation}{self.name}"

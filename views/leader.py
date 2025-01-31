@@ -1,202 +1,148 @@
 # faction/views/leader.py
 
 from rest_framework import viewsets
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import (
-    CreateView as _CreateView,
-    UpdateView as _UpdateView,
-    DeleteView as _DeleteView,
-    DetailView as _DetailView,
-)
-from django.urls import reverse_lazy
-from django_tables2 import SingleTableView, SingleTableMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse, reverse_lazy
+from django.contrib.auth import get_user_model
+from django.db.models import Count
 
-from core.views.base import BaseDashboardView
+from core.views.base import (
+    BaseManageView,
+    BaseTableListView,
+    BaseCreateView,
+    BaseDeleteView,
+    BaseDetailView,
+    BaseUpdateView,
+    BaseFormView,
+    BaseDashboardView,
+)
 from user.models import User
-from user.mixins import AdminRequiredMixin
-from organization.models.organization import (
-    Organization,
-    OrganizationLabels,
-)
+from enrollment.tables.leader import LeaderEnrollmentTable
+from enrollment.models.leader import LeaderEnrollment
+from enrollment.models.faction import FactionEnrollment
 
-from ..models.faction import Faction
-from ..models.leader import LeaderProfile
-from ..serializers import LeaderSerializer
-from ..forms.leader import LeaderForm, LeaderProfileForm
-from ..tables.leader import LeaderTable
+from faction.models.faction import Faction
+from faction.models.leader import Leader, LeaderProfile
+from faction.serializers import LeaderSerializer
+from faction.forms.leader import LeaderForm, PromoteLeaderForm, RegistrationForm
+from faction.tables.faction import FactionOverviewTable
+from faction.tables.leader import LeaderTable
+from faction.charts.faction import FactionReportsChart
+
+User = get_user_model()
 
 
-class ManageView(
-    LoginRequiredMixin, UserPassesTestMixin, SingleTableView, TemplateView
-):
+class ManageView(BaseManageView):
     template_name = "leader/manage.html"
-    table_class = LeaderTable
 
     def test_func(self):
-        user = self.request.user
-        return user.is_admin and user.user_type == "LEADER"
+        return (
+            self.request.user.user_type == User.UserType.LEADER
+            and self.request.user.is_admin
+        )
 
-    def get_table_data(self):
-        faction = self.request.user.leaderprofile.faction
-        return User.objects.filter(user_type="LEADER", leaderprofile__faction=faction)
+    def get_tables_config(self):
+        leader_qs = LeaderEnrollment.objects.select_related("leader__user").filter(
+            facility_enrollment__facility=self.request.user.leaderprofile_profile.faction_enrollment.facility_enrollment.facility
+        )
 
-    def post(self, request, *args, **kwargs):
-        leader_id = request.POST.get("leader_id")
-        if "edit" in request.POST:
-            return redirect("leader:edit", pk=leader_id)
-        elif "delete" in request.POST:
-            return redirect("leader:delete", pk=leader_id)
-        elif "enroll" in request.POST:
-            return redirect("leader:enroll", pk=leader_id)
-        elif "promote" in request.POST:
-            leader = get_object_or_404(User, pk=leader_id)
-            leader.is_admin = True
-            leader.save()
-            return redirect("leader:manage")
-        return super().post(request, *args, **kwargs)
+        return {
+            "leader": {
+                "class": LeaderEnrollmentTable,
+                "queryset": leader_qs,
+            }
+        }
+
+    def get_forms_config(self):
+        return {
+            "leader_form": LeaderForm,
+            "promotion_form": PromoteLeaderForm,
+            "quarters_form": QuartersAssignmentForm,
+        }
 
 
-class IndexView(SingleTableView):
+class IndexView(BaseTableListView):
     model = User
     table_class = LeaderTable
-    template_name = "leader/index.html"
+    template_name = "leader/list.html"
+
+    context_object_name = "leader"
+    paginate_by = 10
 
     def get_queryset(self):
-        results = User.objects.filter(user_type="LEADER").select_related(
-            "leaderprofile", "leaderprofile__faction"
-        )
-        return results
+        queryset = User.objects.filter(user_type=User.UserType.LEADER)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["content_header_text"] = "Leaders"
-        return context
+        # Check if 'faction_slug' is present in the URL
+        faction_slug = self.kwargs.get("faction_slug")
+        if faction_slug:
+            queryset = queryset.filter(
+                leaderprofile_profile__faction__slug=faction_slug
+            )
+
+        return queryset
 
 
-class CreateView(AdminRequiredMixin, _CreateView):
+class CreateView(LoginRequiredMixin, BaseCreateView):
     model = LeaderProfile
     form_class = LeaderForm
     template_name = "leader/form.html"
-    success_url = reverse_lazy("leader_index")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if "slug" in self.kwargs:
-            # If a faction slug is provided, pass the faction to the context
-            context["faction"] = get_object_or_404(Faction, slug=self.kwargs["slug"])
-        return context
-
-    def form_valid(self, form):
-        if "slug" in self.kwargs:
-            # If creating a leader for a specific faction
-            faction = get_object_or_404(Faction, slug=self.kwargs["slug"])
-            form.instance.faction = faction
-        return super().form_valid(form)
 
     def get_success_url(self):
-        if "slug" in self.kwargs:
-            # Redirect to the faction leader list after creation
-            return reverse_lazy("factions:show", kwargs={"slug": self.kwargs["slug"]})
-        return reverse_lazy("leaders:index")  # Redirect to global leader list
+        faction_slug = self.object.faction.slug
+        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
 
 
-class UpdateView(AdminRequiredMixin, _UpdateView):
-    model = User
-    template_name = "leader/form.html"
-    form_class = LeaderForm
-    success_url = reverse_lazy(
-        "leaders:index"
-    )  # Update this to the appropriate success URL
-
-    def get_object(self, queryset=None):
-        # Fetch the leader object based on the slug provided in the URL
-        leader = get_object_or_404(User, slug=self.kwargs.get("slug"))
-        return leader
-
-    def get_context_data(self, **kwargs):
-        # Get the default context data and add the leader profile form
-        context = super().get_context_data(**kwargs)
-        if self.request.POST:
-            context["leader_profile_form"] = LeaderProfileForm(
-                self.request.POST, instance=self.object.leaderprofile
-            )
-        else:
-            context["leader_profile_form"] = LeaderProfileForm(
-                instance=self.object.leaderprofile
-            )
-        return context
-
-    def form_valid(self, form):
-        # Handle both the leader form and the leader profile form
-        context = self.get_context_data()
-        leader_profile_form = context["leader_profile_form"]
-
-        if leader_profile_form.is_valid():
-            self.object = form.save()
-            leader_profile_form.save()
-            return super().form_valid(form)
-        else:
-            return self.form_invalid(form)
-
-    def form_invalid(self, form):
-        # Re-render the form with errors if either form is invalid
-        return self.render_to_response(self.get_context_data(form=form))
-
-
-class PromoteView(AdminRequiredMixin, _UpdateView):
+class UpdateView(LoginRequiredMixin, BaseUpdateView):
     model = LeaderProfile
     form_class = LeaderForm
+    template_name = "leader/form.html"
+    action = "Edit"
+
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
+
+
+class PromoteView(LoginRequiredMixin, BaseUpdateView):
+    model = LeaderProfile
+    form_class = PromoteLeaderForm
     template_name = "leader/promote.html"
-    success_url = reverse_lazy("leaders:index")
+    # success_url = reverse_lazy("factions:leaders:index")
+    action = "Promote"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["action"] = "Promote"
-        return context
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
 
 
-class DeleteView(AdminRequiredMixin, _DeleteView):
+class DeleteView(LoginRequiredMixin, BaseDeleteView):
     model = LeaderProfile
     template_name = "leader/confirm_delete.html"
-    success_url = reverse_lazy("leader_index")
+    action = "Delete"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["action"] = "Delete"
-        return context
-
-
-class ShowView(_DetailView):
-    model = User
-    template_name = "leader/show.html"
-    context_object_name = "leader"
-
-    def get_object(self, queryset=None):
-        # Fetch the leader using the slug
-        leader = get_object_or_404(User, slug=self.kwargs.get("slug"))
-
-        # Fetch the corresponding LeaderProfile if it exists
-        leader_profile = getattr(leader, "leaderprofile", None)
-
-        # You can either return a tuple or augment the leader object with the profile
-        if leader_profile:
-            leader.profile = leader_profile  # Attach profile to the leader object
-        return leader
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Since leader_profile is now attached to the leader object, we can access it easily
-        context["leader"] = self.object
-
-        return context
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
 
 
 class LeaderViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(user_type="leader")
+    queryset = User.objects.filter(user_type=User.UserType.LEADER)
     serializer_class = LeaderSerializer
+
+
+class ShowView(BaseDetailView):
+    model = Leader
+    template_name = "leader/show.html"
+    context_object_name = "leader"
 
 
 class DashboardView(BaseDashboardView):
@@ -205,23 +151,125 @@ class DashboardView(BaseDashboardView):
     """
 
     template_name = "leader/dashboard.html"
-    widgets = ["faction_management_widget", "reports_widget", "tasks_widget"]
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Example widgets data
-        context["faction_management_widget"] = self.get_faction_management_data()
-        context["reports_widget"] = self.get_reports_data()
-        context["tasks_widget"] = self.get_tasks_data()
-
         return context
 
-    def get_faction_management_data(self):
-        return ["Team Member 1", "Team Member 2"]
+    def get_widgets_config(self):
+        """Define widgets for the faction leader or admin dashboard."""
+        widgets = {}
 
-    def get_reports_data(self):
-        return ["Report 1", "Report 2"]
+        user = self.request.user
+        profile = getattr(
+            user, "leaderprofile_profile", None
+        )  
 
-    def get_tasks_data(self):
-        return ["Task 1", "Task 2"]
+        if not profile:
+            return widgets
+
+        # Shared widgets for both faction leader and admin
+        widgets.update(
+            {
+                "faction_overview": {
+                    "table_class": FactionOverviewTable,
+                    "queryset": self.get_faction_overview_queryset(),
+                    "priority": 1,
+                    "title": "Faction Overview",
+                },
+                # "announcements": {
+                #     "table_class": AnnouncementsTable,
+                #     "queryset": self.get_announcements_queryset(),
+                #     "priority": 4,
+                #     "title": "Important Announcements",
+                # },
+            }
+        )
+
+        # Additional widgets for Faction Leader Admins
+        if user.is_admin:
+            widgets.update(
+                {
+                    "faction_reports": {
+                        "chart_class": FactionReportsChart,
+                        "data_source": self.get_faction_reports_data(),
+                        "priority": 2,
+                        "title": "Faction Enrollment Reports",
+                    },
+                    # "manage_announcements": {
+                    #     "form_class": ManageAnnouncementsForm,
+                    #     "priority": 10,
+                    #     "title": "Manage Announcements",
+                    # },
+                }
+            )
+        else:
+            # Widgets specifically for Faction Leaders
+            widgets.update(
+                {
+                    "quick_actions": {
+                        "actions": self.get_quick_actions(),
+                        "priority": 8,
+                        "title": "Quick Actions",
+                    },
+                }
+            )
+
+        return widgets
+
+    def get_faction_overview_queryset(self):
+        """Return the queryset for faction overview."""
+        user = self.request.user
+        profile = getattr(
+            user, "leaderprofile_profile", None
+        )
+        return Faction.objects.filter(pk=profile.faction.pk)
+
+    
+
+    # def get_announcements_queryset(self):
+    #     """Return announcements for the faction."""
+    #     faction = self.request.user.leaderprofile_profile.faction
+    #     return Announcement.objects.filter(faction=faction).order_by("-created_at")
+
+    
+    def get_faction_reports_data(self):
+        """Return data for faction reports."""
+        faction = self.request.user.leaderprofile_profile.faction
+        # Prepare enrollment data
+        enrollments_by_faction = (
+            FactionEnrollment.objects.filter(faction=faction)
+            .values("faction__name")
+            .annotate(count=Count("id"))
+        )
+
+        # Convert queryset to a list of dictionaries for the chart
+        return [
+            {"label": item["faction__name"], "count": item["count"]}
+            for item in enrollments_by_faction
+        ]
+
+
+    def get_quick_actions(self):
+        """Return quick actions for the leader."""
+        return [
+            #{"label": "Create Announcement", "url": reverse("announcements:create")},
+            {"label": "Add Attendee", "url": reverse("factions:attendees:new")},
+        ]
+
+
+
+class RegisterLeaderView(BaseFormView):
+    template_name = "leader/register.html"
+    form_class = RegistrationForm
+    success_url = reverse_lazy("home")
+
+    def form_valid(self, form):
+        form.save()
+        username = form.cleaned_data.get("username")
+        raw_password = form.cleaned_data.get("password1")
+        user = authenticate(username=username, password=raw_password)
+        if user is not None:
+            login(self.request, user)
+        return super().form_valid(form)

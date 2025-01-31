@@ -37,5 +37,15 @@ class ChildFactionTable(ActionsColumnMixin, tables.Table):
     urls = {
         "add": {"name": "factions:new_child", "kwargs": {"slug": "parent__slug"}},
         "show": {"name": "factions:show", "kwargs": {"slug": "slug"}},
-        "edit": {"name": "factions:update", "kwargs": {"slug": "slug"}}
+        "edit": {"name": "factions:update", "kwargs": {"slug": "slug"}},
     }
+
+
+class FactionOverviewTable(tables.Table):
+    name = tables.Column(verbose_name="Faction Name")
+    #leaders_count = tables.Column(verbose_name="Number of Leaders", accessor="leaders.count")
+    #members_count = tables.Column(verbose_name="Number of Attendees", accessor="attendees.count")
+
+    class Meta:
+        model = Faction
+        fields = ["name"]#, "leaders_count", "members_count"]

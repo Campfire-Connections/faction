@@ -42,3 +42,9 @@ class AttendeeForm(forms.ModelForm):
             user.save()
             attendee_profile.save()
         return attendee_profile
+
+class PromoteAttendeeForm(forms.ModelForm):
+    pass
+
+class RegistrationForm(forms.ModelForm):
+    pass

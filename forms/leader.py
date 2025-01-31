@@ -28,4 +28,12 @@ class LeaderForm(forms.ModelForm):
 class LeaderProfileForm(forms.ModelForm):
     class Meta:
         model = LeaderProfile
-        fields = ["faction", "organization"]
+        fields = []
+
+
+class PromoteLeaderForm(forms.ModelForm):
+    pass
+
+
+class RegistrationForm(forms.ModelForm):
+    pass

@@ -4,7 +4,7 @@ from core.mixins.tables import ActionsColumnMixin, ActionUrlMixin
 from user.models import User
 
 
-class LeaderTable(ActionsColumnMixin, ActionUrlMixin,tables.Table):
+class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
     username = tables.Column(accessor="username", verbose_name="Username")
     first_name = tables.Column(accessor="first_name", verbose_name="First Name")
     last_name = tables.Column(accessor="last_name", verbose_name="Last Name")
@@ -31,21 +31,21 @@ class LeaderTable(ActionsColumnMixin, ActionUrlMixin,tables.Table):
             "organization",
         )
         attrs = {"class": "table table-striped table-bordered"}
+
     urls = {
-        'add': {
+        "add": {
             "url_name": "factions:new_leader",
             "kwargs": {"faction_slug": "faction__slug"},
             "icon": "fa-user-plus",
         },
-        'edit': {
+        "edit": {
             "url_name": "leaders:show",
             "kwargs": {"slug": "slug"},
         },
     }
     url_namespace = "leaders"
 
-
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # Pass the user for permission checks
+        user = kwargs.pop("user", None)  # Pass the user for permission checks
         super().__init__(*args, **kwargs, user=user)
 

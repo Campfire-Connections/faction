@@ -17,6 +17,8 @@ app_name = "attendees"
 urlpatterns = [
     path("", IndexView.as_view(), name="index"),
     path("new/", CreateView.as_view(), name="new"),
+    # Dashboard
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
     path("<int:pk>/", ShowView.as_view(), name="show"),
     path("<slug:slug>/", ShowView.as_view(), name="show"),
     path("<int:pk>/edit/", UpdateView.as_view(), name="edit"),
@@ -26,7 +28,6 @@ urlpatterns = [
     path("<int:pk>/promote/", PromoteView.as_view(), name="promote"),
     path("<slug:slug>/promote/", PromoteView.as_view(), name="promote"),
     path("manage/", ManageView.as_view(), name="manage"),
-    path("enrollments/", include("enrollment.urls.attendee", namespace="enrollment")),
-    # Dashboard
-    path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("<slug:slug>/enrollments/", include("enrollment.urls.attendee", namespace="enrollments")),
+
 ]

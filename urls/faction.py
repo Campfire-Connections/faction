@@ -2,9 +2,8 @@
 
 from django.urls import path, include
 
-from ..views.faction import (
+from faction.views.faction import (
     IndexView,
-    IndexByOrganizationView,
     ShowView,
     CreateView,
     CreateChildView,
@@ -12,8 +11,7 @@ from ..views.faction import (
     DeleteView,
     ManageView,
 )
-from ..views.attendee import IndexByFactionView as AttendeeIndexByFactionView
-from faction.views.leader import CreateView as LeaderCreateView
+
 
 app_name = "factions"
 
@@ -35,17 +33,16 @@ urlpatterns = [
     # Delete
     path("<int:pk>/delete/", DeleteView.as_view(), name="delete"),
     path("<slug:slug>/delete/", DeleteView.as_view(), name="delete"),
-    # Attendees Index
-    path(
-        "<int:pk>/attendees/",
-        AttendeeIndexByFactionView.as_view(),
-        name="attendee_index_by_faction",
-    ),
     path(
         "<slug:slug>/attendees/",
-        AttendeeIndexByFactionView.as_view(),
-        name="attendee_index_by_faction",
+        include("faction.urls.attendee", namespace="attendees"),
     ),
-    path('<slug:slug>/enrollments/', include('enrollment.urls.faction', namespace='enrollments')),
-    path('<slug:faction_slug>/leaders/new/', LeaderCreateView.as_view(), name="new_leader"),
+    path(
+        "<slug:slug>/enrollments/",
+        include("enrollment.urls.faction", namespace="enrollments"),
+    ),
+    path(
+        "<slug:faction_slug>/leaders",
+        include("faction.urls.leader", namespace="leaders"),
+    ),
 ]

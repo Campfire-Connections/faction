@@ -9,11 +9,11 @@ from django.forms import ValidationError
 from django.urls import reverse
 
 from core.mixins import models as mixins
-
+from enrollment.models.attendee import AttendeeEnrollment
 # from core.mixins import settings as stgs
 from user.models import User, BaseUserProfile
 
-# rom organization.models import Organization
+# from organization.models import Organization
 
 # from .faction import Faction
 from ..managers.attendee import AttendeeManager
@@ -73,9 +73,9 @@ class AttendeeProfile(BaseUserProfile):
     @property
     def enrollments(self):
         """
-        Dynamically fetch enrollments for this faculty member.
+        Dynamically fetch enrollments for this attendee.
         """
-        return AttendeeEnrollment.objects.filter(attendee=self.user)
+        return AttendeeEnrollment.objects.filter(attendee=self)
 
 
 @receiver(post_save, sender=Attendee)

@@ -1,117 +1,123 @@
 # faction/views/attendee.py
 
 from rest_framework import viewsets
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import (
-    CreateView as _CreateView,
-    UpdateView as _UpdateView,
-    DeleteView as _DeleteView,
-    DetailView as _DetailView,
-)
-from django.urls import reverse_lazy
-from django_tables2 import SingleTableView, SingleTableMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse, reverse_lazy
 from django.contrib.auth import get_user_model
 
-from core.mixins.forms import SuccessMessageMixin, FormValidationMixin
-from core.views.base import BaseDashboardView
-from user.models import User
-from user.mixins import AdminRequiredMixin
-from organization.models.organization import (
-    Organization,
-    OrganizationLabels,
+from core.views.base import (
+    BaseManageView,
+    BaseTableListView,
+    BaseCreateView,
+    BaseDeleteView,
+    BaseDetailView,
+    BaseUpdateView,
+    BaseFormView,
+    BaseDashboardView,
 )
+from user.models import User
+from enrollment.tables.attendee_class import ClassScheduleTable
+from enrollment.tables.attendee import AttendeeEnrollmentTable, AttendeeScheduleTable
+from enrollment.models.attendee import AttendeeEnrollment
+from enrollment.models.attendee_class import AttendeeClassEnrollment
 
-from ..models.faction import Faction
-from ..models.attendee import AttendeeProfile
+from ..models.attendee import Attendee, AttendeeProfile
 from ..serializers import AttendeeSerializer
-from ..forms.attendee import AttendeeForm
+from ..forms.attendee import AttendeeForm, PromoteAttendeeForm, RegistrationForm
 from ..tables.attendee import AttendeeTable
 
 
 User = get_user_model()
 
 
-class IndexByFactionView(SingleTableView):
+class IndexView(BaseTableListView):
     model = User
     table_class = AttendeeTable
-    template_name = "attendee/index.html"
+    template_name = "attendee/list.html"
+
+    context_object_name = "attendee"
+    paginate_by = 10
 
     def get_queryset(self):
-        faction_slug = self.kwargs.get("slug")
-        return User.objects.filter(
-            user_type="ATTENDEE", attendeeprofile__faction__slug=faction_slug
-        ).select_related("attendeeprofile")
+        queryset = User.objects.filter(user_type=User.UserType.ATTENDEE)
+
+        # Check if 'faction_slug' is present in the URL
+        faction_slug = self.kwargs.get("faction_slug")
+        if faction_slug:
+            queryset = queryset.filter(
+                attendeeprofile_profile__faction__slug=faction_slug
+            )
+
+        return queryset
 
 
-class IndexByOrganizationView(SingleTableView):
-    model = User
-    table_class = AttendeeTable
-    template_name = "attendee/index.html"
+class CreateView(LoginRequiredMixin, BaseCreateView):
+    model = AttendeeProfile
+    form_class = AttendeeForm
+    template_name = "attendee/form.html"
+    # success_url = reverse_lazy("factions:attendees:index")
+    action = "Create"
+    success_message = "Attendee created successfully!"
+    error_message = "Failed to create attendee."
 
-    def get_queryset(self):
-        org_slug = self.kwargs.get("slug")
-        return User.objects.filter(
-            user_type="ATTENDEE", attendeeprofile__faction__organization__slug=org_slug
-        ).select_related("attendeeprofile")
-
-
-class IndexView(SingleTableView):
-    model = User
-    table_class = AttendeeTable
-    template_name = "attendee/index.html"
-
-    def get_queryset(self):
-        return User.objects.filter(user_type="ATTENDEE").select_related(
-            "attendeeprofile"
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse(
+            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
         )
 
 
-class CreateView(
-    AdminRequiredMixin, SuccessMessageMixin, FormValidationMixin, _CreateView
-):
+class UpdateView(LoginRequiredMixin, BaseUpdateView):
     model = AttendeeProfile
     form_class = AttendeeForm
     template_name = "attendee/form.html"
-    success_message = "Attendee created successfully!"
-    success_url = reverse_lazy("attendee_index")
+    # success_url = reverse_lazy("factions:attendees:index")
+    action = "Edit"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["action"] = "Create"
-        return context
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse(
+            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+        )
 
 
-class UpdateView(
-    AdminRequiredMixin, SuccessMessageMixin, FormValidationMixin, _UpdateView
-):
+class PromoteView(LoginRequiredMixin, BaseUpdateView):
     model = AttendeeProfile
-    form_class = AttendeeForm
-    template_name = "attendee/form.html"
-    success_message = "Attendee updated successfully!"
-    success_url = reverse_lazy("attendee_index")
+    form_class = PromoteAttendeeForm
+    template_name = "attendee/promote.html"
+    # success_url = reverse_lazy("factions:attendees:index")
+    action = "Promote"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["action"] = "Edit"
-        return context
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse(
+            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+        )
 
 
-class PromoteView(_UpdateView):
-    pass
-
-
-class DeleteView(AdminRequiredMixin, SuccessMessageMixin, _DeleteView):
+class DeleteView(LoginRequiredMixin, BaseDeleteView):
     model = AttendeeProfile
     template_name = "attendee/confirm_delete.html"
-    success_message = "Attendee deleted successfully!"
-    success_url = reverse_lazy("attendee_index")
+    # success_url = reverse_lazy("factions:attendees:index")
+    action = "Delete"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["action"] = "Delete"
-        return context
+    def get_success_url(self):
+        """
+        Dynamically generate the success URL with variables.
+        """
+        faction_slug = self.object.faction.slug
+        return reverse(
+            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+        )
 
 
 class AttendeeViewSet(viewsets.ModelViewSet):
@@ -119,43 +125,42 @@ class AttendeeViewSet(viewsets.ModelViewSet):
     serializer_class = AttendeeSerializer
 
 
-class ShowView(_DetailView):
-    model = AttendeeProfile
+class ShowView(BaseDetailView):
+    model = Attendee
     template_name = "attendee/show.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["action"] = "Details"
-        return context
+    context_object_name = "attendee"
 
 
-class ManageView(
-    LoginRequiredMixin, UserPassesTestMixin, SingleTableMixin, TemplateView
-):
+class ManageView(BaseManageView):
     template_name = "attendee/manage.html"
-    table_class = AttendeeTable
 
     def test_func(self):
-        user = self.request.user
-        return user.is_admin and user.user_type == "LEADER"
-
-    def get_table_data(self):
-        faction = self.request.user.leaderprofile.faction
-        return User.objects.filter(
-            user_type="ATTENDEE", attendeeprofile__faction=faction
+        return (
+            self.request.user.user_type == User.UserType.LEADER
+            and self.request.user.is_admin
         )
 
-    def post(self, request, *args, **kwargs):
-        if "edit" in request.POST:
-            attendee_id = request.POST.get("attendee_id")
-            return redirect("attendee:edit", pk=attendee_id)
-        elif "delete" in request.POST:
-            attendee_id = request.POST.get("attendee_id")
-            return redirect("attendee:delete", pk=attendee_id)
-        elif "enroll" in request.POST:
-            attendee_id = request.POST.get("attendee_id")
-            return redirect("attendee:enroll", pk=attendee_id)
-        return super().post(request, *args, **kwargs)
+    def get_tables_config(self):
+        attendee_qs = AttendeeEnrollment.objects.select_related(
+            "attendee__user"
+        ).filter(
+            facility_enrollment__facility=self.request.user.attendeeprofile_profile.facility
+        )
+
+        return {
+            "attendee": {
+                "class": AttendeeEnrollmentTable,
+                "queryset": attendee_qs,
+            }
+        }
+
+    def get_forms_config(self):
+        return {
+            "attendee_form": AttendeeForm,
+            "promotion_form": PromoteAttendeeForm,
+            "class_form": ClassAssignmentForm,
+            "quarters_form": QuartersAssignmentForm,
+        }
 
 
 class DashboardView(BaseDashboardView):
@@ -169,18 +174,55 @@ class DashboardView(BaseDashboardView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Example widgets data
-        context["schedule_widget"] = self.get_schedule_data()
-        context["announcements_widget"] = self.get_announcements_data()
-        context["resources_widget"] = self.get_resources_data()
-
         return context
 
-    def get_schedule_data(self):
-        return ["Event 1", "Event 2"]
+    def get_widgets_config(self):
+        """Define widgets for the attendee dashboard."""
+        widgets = {
+            "class_schedule": {
+                "table_class": AttendeeScheduleTable,
+                "queryset": self.get_attendee_schedule_queryset(),
+                "priority": 1,
+                "title": "Class Schedule",
+            },
+        }
 
-    def get_announcements_data(self):
-        return ["Announcement 1", "Announcement 2"]
+        return widgets
 
-    def get_resources_data(self):
-        return ["Resource 1", "Resource 2"]
+    def get_attendee_schedule_queryset(self, faction_enrollment=None):
+        """Fetch data for class schedule widget."""
+        profile = self.request.user.attendeeprofile_profile
+
+        if not faction_enrollment:
+            faction_enrollment = self.get_default_faction_enrollment(profile)
+
+        if not faction_enrollment:
+            return AttendeeClassEnrollment.objects.none()
+
+        return AttendeeClassEnrollment.objects.filter(
+            attendee=profile,
+            attendee_enrollment__faction_enrollment=faction_enrollment,
+        )
+
+    def get_default_faction_enrollment(self, profile):
+        """
+        Fetch the default faction enrollment for an attendee profile.
+        Returns None if no enrollment is found.
+        """
+        first_enrollment = profile.enrollments.first()
+        return first_enrollment.faction_enrollment if first_enrollment else None
+
+
+class RegisterAttendeeView(BaseFormView):
+    template_name = "attendee/register.html"
+    form_class = RegistrationForm
+    success_url = reverse_lazy("home")
+
+    def form_valid(self, form):
+        form.save()
+        username = form.cleaned_data.get("username")
+        raw_password = form.cleaned_data.get("password1")
+        user = authenticate(username=username, password=raw_password)
+        if user is not None:
+            login(self.request, user)
+        return super().form_valid(form)

@@ -3,7 +3,6 @@
 from rest_framework import viewsets
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse, reverse_lazy
-from django.contrib.auth import get_user_model
 
 from core.views.base import (
     BaseManageView,
@@ -15,7 +14,10 @@ from core.views.base import (
     BaseFormView,
     BaseDashboardView,
 )
-from user.models import User
+from core.mixins.views import (
+    FactionScopedMixin,
+    PortalPermissionMixin,
+)
 from enrollment.tables.attendee_class import ClassScheduleTable
 from enrollment.tables.attendee import AttendeeEnrollmentTable, AttendeeScheduleTable
 from enrollment.models.attendee import AttendeeEnrollment
@@ -27,11 +29,8 @@ from ..forms.attendee import AttendeeForm, PromoteAttendeeForm, RegistrationForm
 from ..tables.attendee import AttendeeTable
 
 
-User = get_user_model()
-
-
-class IndexView(BaseTableListView):
-    model = User
+class IndexView(FactionScopedMixin, BaseTableListView):
+    model = AttendeeProfile
     table_class = AttendeeTable
     template_name = "attendee/list.html"
 
@@ -39,15 +38,11 @@ class IndexView(BaseTableListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = User.objects.filter(user_type=User.UserType.ATTENDEE)
-
-        # Check if 'faction_slug' is present in the URL
-        faction_slug = self.kwargs.get("faction_slug")
-        if faction_slug:
-            queryset = queryset.filter(
-                attendeeprofile_profile__faction__slug=faction_slug
-            )
-
+        queryset = super().get_queryset()
+        queryset = queryset.select_related("user", "faction", "organization")
+        faction = self.get_scope_faction()
+        if faction:
+            queryset = queryset.filter(faction=faction)
         return queryset
 
 
@@ -121,7 +116,7 @@ class DeleteView(LoginRequiredMixin, BaseDeleteView):
 
 
 class AttendeeViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(user_type=User.UserType.ATTENDEE)
+    queryset = AttendeeProfile.objects.select_related("user", "faction")
     serializer_class = AttendeeSerializer
 
 
@@ -131,21 +126,17 @@ class ShowView(BaseDetailView):
     context_object_name = "attendee"
 
 
-class ManageView(BaseManageView):
+class ManageView(PortalPermissionMixin, FactionScopedMixin, BaseManageView):
     template_name = "attendee/manage.html"
-
-    def test_func(self):
-        return (
-            self.request.user.user_type == User.UserType.LEADER
-            and self.request.user.is_admin
-        )
+    portal_key = "faction"
 
     def get_tables_config(self):
-        attendee_qs = AttendeeEnrollment.objects.select_related(
-            "attendee__user"
-        ).filter(
-            facility_enrollment__facility=self.request.user.attendeeprofile_profile.facility
-        )
+        faction = self.get_scope_faction()
+        attendee_qs = AttendeeEnrollment.objects.select_related("attendee__user")
+        if faction:
+            attendee_qs = attendee_qs.filter(faction_enrollment__faction=faction)
+        else:
+            attendee_qs = attendee_qs.none()
 
         return {
             "attendee": {
@@ -163,13 +154,14 @@ class ManageView(BaseManageView):
         }
 
 
-class DashboardView(BaseDashboardView):
+class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView):
     """
     Dashboard for attendees.
     """
 
     template_name = "attendee/dashboard.html"
     widgets = ["schedule_widget", "announcements_widget", "resources_widget"]
+    portal_key = "attendee"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -191,7 +183,9 @@ class DashboardView(BaseDashboardView):
 
     def get_attendee_schedule_queryset(self, faction_enrollment=None):
         """Fetch data for class schedule widget."""
-        profile = self.request.user.attendeeprofile_profile
+        profile = getattr(self.request.user, "attendeeprofile_profile", None)
+        if not profile:
+            return AttendeeClassEnrollment.objects.none()
 
         if not faction_enrollment:
             faction_enrollment = self.get_default_faction_enrollment(profile)

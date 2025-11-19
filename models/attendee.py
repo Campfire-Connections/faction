@@ -11,6 +11,16 @@ class AttendeeProfile(BaseUserProfile):
     class Meta:
         verbose_name = "Attendee Profile"
         verbose_name_plural = "Attendee Profiles"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "slug"],
+                name="unique_attendee_slug_per_org",
+            ),
+            models.UniqueConstraint(
+                fields=["faction", "user"],
+                name="unique_attendee_per_faction_user",
+            ),
+        ]
 
     faction = models.ForeignKey(
         "faction.Faction", on_delete=models.SET_NULL, null=True, blank=True

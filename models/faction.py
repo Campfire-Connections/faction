@@ -16,7 +16,9 @@ from enrollment.models.faction import FactionEnrollment
 from ..managers.faction import FactionManager
 
 
-class Faction(mixins.HierarchicalEntity, stgs.SettingsMixin, models.Model):
+class Faction(
+    mixins.HierarchicalEntity, mixins.AddressableMixin, stgs.SettingsMixin, models.Model
+):
     """Faction Model."""
 
     abbreviation = models.CharField(max_length=50, null=True, blank=True)
@@ -86,3 +88,10 @@ class Faction(mixins.HierarchicalEntity, stgs.SettingsMixin, models.Model):
 
     def get_fallback_chain(self):
         return ["organization"]
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "slug"], name="unique_faction_slug_per_org"
+            )
+        ]

@@ -16,6 +16,10 @@ from core.views.base import (
     BaseFormView,
     BaseDashboardView,
 )
+from core.mixins.views import (
+    FactionScopedMixin,
+    PortalPermissionMixin,
+)
 from user.models import User
 from enrollment.tables.leader import LeaderEnrollmentTable
 from enrollment.models.leader import LeaderEnrollment
@@ -32,19 +36,17 @@ from faction.charts.faction import FactionReportsChart
 User = get_user_model()
 
 
-class ManageView(BaseManageView):
+class ManageView(PortalPermissionMixin, FactionScopedMixin, BaseManageView):
     template_name = "leader/manage.html"
-
-    def test_func(self):
-        return (
-            self.request.user.user_type == User.UserType.LEADER
-            and self.request.user.is_admin
-        )
+    portal_key = "faction"
 
     def get_tables_config(self):
-        leader_qs = LeaderEnrollment.objects.select_related("leader__user").filter(
-            facility_enrollment__facility=self.request.user.leaderprofile_profile.faction_enrollment.facility_enrollment.facility
-        )
+        faction = self.get_scope_faction()
+        leader_qs = LeaderEnrollment.objects.select_related("leader__user")
+        if faction:
+            leader_qs = leader_qs.filter(faction_enrollment__faction=faction)
+        else:
+            leader_qs = leader_qs.none()
 
         return {
             "leader": {
@@ -61,8 +63,8 @@ class ManageView(BaseManageView):
         }
 
 
-class IndexView(BaseTableListView):
-    model = User
+class IndexView(FactionScopedMixin, BaseTableListView):
+    model = LeaderProfile
     table_class = LeaderTable
     template_name = "leader/list.html"
 
@@ -70,15 +72,11 @@ class IndexView(BaseTableListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = User.objects.filter(user_type=User.UserType.LEADER)
-
-        # Check if 'faction_slug' is present in the URL
-        faction_slug = self.kwargs.get("faction_slug")
-        if faction_slug:
-            queryset = queryset.filter(
-                leaderprofile_profile__faction__slug=faction_slug
-            )
-
+        queryset = super().get_queryset()
+        queryset = queryset.select_related("user", "faction", "organization")
+        faction = self.get_scope_faction()
+        if faction:
+            queryset = queryset.filter(faction=faction)
         return queryset
 
 
@@ -135,7 +133,7 @@ class DeleteView(LoginRequiredMixin, BaseDeleteView):
 
 
 class LeaderViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(user_type=User.UserType.LEADER)
+    queryset = LeaderProfile.objects.select_related("user", "faction")
     serializer_class = LeaderSerializer
 
 
@@ -145,12 +143,13 @@ class ShowView(BaseDetailView):
     context_object_name = "leader"
 
 
-class DashboardView(BaseDashboardView):
+class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView):
     """
     Dashboard for leaders.
     """
 
     template_name = "leader/dashboard.html"
+    portal_key = "faction"
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -161,12 +160,9 @@ class DashboardView(BaseDashboardView):
         """Define widgets for the faction leader or admin dashboard."""
         widgets = {}
 
-        user = self.request.user
-        profile = getattr(
-            user, "leaderprofile_profile", None
-        )  
+        faction = self.get_scope_faction()
 
-        if not profile:
+        if not faction:
             return widgets
 
         # Shared widgets for both faction leader and admin
@@ -188,7 +184,7 @@ class DashboardView(BaseDashboardView):
         )
 
         # Additional widgets for Faction Leader Admins
-        if user.is_admin:
+        if self.request.user.is_admin:
             widgets.update(
                 {
                     "faction_reports": {
@@ -220,11 +216,10 @@ class DashboardView(BaseDashboardView):
 
     def get_faction_overview_queryset(self):
         """Return the queryset for faction overview."""
-        user = self.request.user
-        profile = getattr(
-            user, "leaderprofile_profile", None
-        )
-        return Faction.objects.filter(pk=profile.faction.pk)
+        faction = self.get_scope_faction()
+        if not faction:
+            return Faction.objects.none()
+        return Faction.objects.filter(pk=faction.pk)
 
     
 

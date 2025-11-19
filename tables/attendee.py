@@ -1,24 +1,21 @@
 # faction/tables/attendee.py
 import django_tables2 as tables
 from core.mixins.tables import ActionsColumnMixin, ActionUrlMixin
-from user.models import User
+from ..models.attendee import AttendeeProfile
 
 
 class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
-    username = tables.Column(accessor="username", verbose_name="Username")
-    first_name = tables.Column(accessor="first_name", verbose_name="First Name")
-    last_name = tables.Column(accessor="last_name", verbose_name="Last Name")
-    email = tables.Column(accessor="email", verbose_name="Email")
-    faction = tables.Column(
-        accessor="attendeeprofile.faction.name", verbose_name="Faction"
-    )
+    username = tables.Column(accessor="user.username", verbose_name="Username")
+    first_name = tables.Column(accessor="user.first_name", verbose_name="First Name")
+    last_name = tables.Column(accessor="user.last_name", verbose_name="Last Name")
+    email = tables.Column(accessor="user.email", verbose_name="Email")
+    faction = tables.Column(accessor="faction.name", verbose_name="Faction")
     organization = tables.Column(
-        accessor="attendeeprofile.organization.name", verbose_name="Organization"
+        accessor="organization.name", verbose_name="Organization"
     )
-    # Add more fields as needed
 
     class Meta:
-        model = User
+        model = AttendeeProfile
         template_name = "django_tables2/bootstrap4.html"
         fields = (
             "username",
@@ -39,4 +36,3 @@ class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
     show_url_name = "attendees:show"
     edit_url_name = "attendees:edit"
     delete_url_name = "attendees:delete"
-

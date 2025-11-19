@@ -12,6 +12,16 @@ class LeaderProfile(BaseUserProfile):
     class Meta:
         verbose_name = "Leader Profile"
         verbose_name_plural = "Leader Profiles"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "slug"],
+                name="unique_leader_slug_per_org",
+            ),
+            models.UniqueConstraint(
+                fields=["faction", "user"],
+                name="unique_leader_per_faction_user",
+            ),
+        ]
 
     faction = models.ForeignKey(
         "faction.Faction", on_delete=models.SET_NULL, null=True, blank=True

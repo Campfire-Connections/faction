@@ -2,6 +2,7 @@
 
 from rest_framework import serializers
 
+from user.serializers import BaseProfileSerializer
 from .models import Faction, LeaderProfile, AttendeeProfile
 
 
@@ -11,13 +12,13 @@ class FactionSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class LeaderSerializer(serializers.ModelSerializer):
-    class Meta:
+class LeaderSerializer(BaseProfileSerializer):
+    class Meta(BaseProfileSerializer.Meta):
         model = LeaderProfile
-        fields = "__all__"
+        fields = BaseProfileSerializer.Meta.fields + ("faction", "organization")
 
 
-class AttendeeSerializer(serializers.ModelSerializer):
-    class Meta:
+class AttendeeSerializer(BaseProfileSerializer):
+    class Meta(BaseProfileSerializer.Meta):
         model = AttendeeProfile
-        fields = "__all__"
+        fields = BaseProfileSerializer.Meta.fields + ("faction", "organization")

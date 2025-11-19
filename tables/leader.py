@@ -1,25 +1,22 @@
 # faction/tables/leader.py
 import django_tables2 as tables
 from core.mixins.tables import ActionsColumnMixin, ActionUrlMixin
-from user.models import User
+from ..models.leader import LeaderProfile
 
 
 class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
-    username = tables.Column(accessor="username", verbose_name="Username")
-    first_name = tables.Column(accessor="first_name", verbose_name="First Name")
-    last_name = tables.Column(accessor="last_name", verbose_name="Last Name")
-    email = tables.Column(accessor="email", verbose_name="Email")
-    is_admin = tables.Column(accessor="is_admin", verbose_name="Is Faction Admin")
-    faction = tables.Column(
-        accessor="leaderprofile.faction.name", verbose_name="Faction"
-    )
+    username = tables.Column(accessor="user.username", verbose_name="Username")
+    first_name = tables.Column(accessor="user.first_name", verbose_name="First Name")
+    last_name = tables.Column(accessor="user.last_name", verbose_name="Last Name")
+    email = tables.Column(accessor="user.email", verbose_name="Email")
+    is_admin = tables.Column(accessor="user.is_admin", verbose_name="Is Faction Admin")
+    faction = tables.Column(accessor="faction.name", verbose_name="Faction")
     organization = tables.Column(
-        accessor="leaderprofile.organization.name", verbose_name="Organization"
+        accessor="organization.name", verbose_name="Organization"
     )
-    # Add more fields as needed
 
     class Meta:
-        model = User
+        model = LeaderProfile
         template_name = "django_tables2/bootstrap4.html"
         fields = (
             "username",
@@ -48,4 +45,3 @@ class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)  # Pass the user for permission checks
         super().__init__(*args, **kwargs, user=user)
-

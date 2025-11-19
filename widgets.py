@@ -4,7 +4,7 @@ from django.views import View
 
 from pages.widgets import BaseWidget
 
-from .models import Attendee, AttendeeProfile, Faction, LeaderProfile
+from .models import AttendeeProfile, Faction, LeaderProfile
 
 
 class AttendeeListWidget(BaseWidget):
@@ -53,15 +53,15 @@ class AttendeeListWidget(BaseWidget):
         current_user = request.user
         faction = None
 
-        if hasattr(current_user, "leaderprofile"):
-            faction = current_user.leaderprofile.faction
-        elif hasattr(current_user, "attendeeprofile"):
-            faction = current_user.attendeeprofile.faction
+        if hasattr(current_user, "leaderprofile_profile"):
+            faction = current_user.leaderprofile_profile.faction
+        elif hasattr(current_user, "attendeeprofile_profile"):
+            faction = current_user.attendeeprofile_profile.faction
         
         if faction:
-            attendees = Attendee.objects.filter(attendeeprofile__faction=faction)
+            attendees = AttendeeProfile.objects.filter(faction=faction)
         else:
-            attendees = Attendee.objects.none()
+            attendees = AttendeeProfile.objects.none()
 
         return {"attendees": attendees}
 
@@ -136,15 +136,13 @@ class LeaderListWidget(BaseWidget):
         current_user = request.user
         faction = None
 
-        if hasattr(current_user, "leaderprofile"):
-            faction = current_user.leaderprofile.faction
-        elif hasattr(current_user, "leaderprofile"):
-            faction = current_user.leaderprofile.faction
+        if hasattr(current_user, "leaderprofile_profile"):
+            faction = current_user.leaderprofile_profile.faction
 
         if faction:
-            leaders = Leader.objects.filter(leaderprofile__faction=faction)
+            leaders = LeaderProfile.objects.filter(faction=faction)
         else:
-            leaders = Leader.objects.none()
+            leaders = LeaderProfile.objects.none()
 
         return {"leaders": leaders}
 

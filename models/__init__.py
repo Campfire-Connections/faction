@@ -1,5 +1,5 @@
 from .faction import Faction
-from .leader import Leader, LeaderProfile
-from .attendee import Attendee, AttendeeProfile
+from .leader import LeaderProfile
+from .attendee import AttendeeProfile
 
-__all__ = ['Faction', 'Leader', 'LeaderProfile', 'Attendee', 'AttendeeProfile']
+__all__ = ["Faction", "LeaderProfile", "AttendeeProfile"]

@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from .models import Faction, Leader, Attendee
+from .models import Faction, LeaderProfile, AttendeeProfile
 
 
 class FactionSerializer(serializers.ModelSerializer):
@@ -13,11 +13,11 @@ class FactionSerializer(serializers.ModelSerializer):
 
 class LeaderSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Leader
+        model = LeaderProfile
         fields = "__all__"
 
 
 class AttendeeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Attendee
+        model = AttendeeProfile
         fields = "__all__"

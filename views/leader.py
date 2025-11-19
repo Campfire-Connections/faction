@@ -22,7 +22,7 @@ from enrollment.models.leader import LeaderEnrollment
 from enrollment.models.faction import FactionEnrollment
 
 from faction.models.faction import Faction
-from faction.models.leader import Leader, LeaderProfile
+from faction.models.leader import LeaderProfile
 from faction.serializers import LeaderSerializer
 from faction.forms.leader import LeaderForm, PromoteLeaderForm, RegistrationForm
 from faction.tables.faction import FactionOverviewTable
@@ -140,7 +140,7 @@ class LeaderViewSet(viewsets.ModelViewSet):
 
 
 class ShowView(BaseDetailView):
-    model = Leader
+    model = LeaderProfile
     template_name = "leader/show.html"
     context_object_name = "leader"
 

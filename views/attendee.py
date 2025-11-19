@@ -21,7 +21,7 @@ from enrollment.tables.attendee import AttendeeEnrollmentTable, AttendeeSchedule
 from enrollment.models.attendee import AttendeeEnrollment
 from enrollment.models.attendee_class import AttendeeClassEnrollment
 
-from ..models.attendee import Attendee, AttendeeProfile
+from ..models.attendee import AttendeeProfile
 from ..serializers import AttendeeSerializer
 from ..forms.attendee import AttendeeForm, PromoteAttendeeForm, RegistrationForm
 from ..tables.attendee import AttendeeTable
@@ -126,7 +126,7 @@ class AttendeeViewSet(viewsets.ModelViewSet):
 
 
 class ShowView(BaseDetailView):
-    model = Attendee
+    model = AttendeeProfile
     template_name = "attendee/show.html"
     context_object_name = "attendee"
 

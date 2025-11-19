@@ -16,18 +16,7 @@ from enrollment.models.faction import FactionEnrollment
 from ..managers.faction import FactionManager
 
 
-class Faction(
-    mixins.NameDescriptionMixin,
-    mixins.TimestampMixin,
-    mixins.SoftDeleteMixin,
-    mixins.AuditMixin,
-    mixins.SlugMixin,
-    mixins.ActiveMixin,
-    mixins.ImageMixin,
-    mixins.ParentChildMixin,
-    stgs.SettingsMixin,
-    models.Model,
-):
+class Faction(mixins.HierarchicalEntity, stgs.SettingsMixin, models.Model):
     """Faction Model."""
 
     abbreviation = models.CharField(max_length=50, null=True, blank=True)

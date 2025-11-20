@@ -250,7 +250,7 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
         """Return quick actions for the leader."""
         return [
             #{"label": "Create Announcement", "url": reverse("announcements:create")},
-            {"label": "Add Attendee", "url": reverse("factions:attendees:new")},
+            {"label": "Add Attendee", "url": reverse("attendees:new")},
         ]
 
 

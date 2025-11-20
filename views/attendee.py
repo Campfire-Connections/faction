@@ -18,6 +18,7 @@ from core.mixins.views import (
     FactionScopedMixin,
     PortalPermissionMixin,
 )
+from core.widgets import TableWidget, TextWidget, ListWidget
 from enrollment.tables.attendee_class import ClassScheduleTable
 from enrollment.tables.attendee import AttendeeEnrollmentTable, AttendeeScheduleTable
 from enrollment.models.attendee import AttendeeEnrollment
@@ -160,25 +161,34 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
     """
 
     template_name = "attendee/dashboard.html"
-    widgets = ["schedule_widget", "announcements_widget", "resources_widget"]
     portal_key = "attendee"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        return context
-
-    def get_widgets_config(self):
-        """Define widgets for the attendee dashboard."""
-        widgets = {
-            "class_schedule": {
-                "table_class": AttendeeScheduleTable,
-                "queryset": self.get_attendee_schedule_queryset(),
-                "priority": 1,
-                "title": "Class Schedule",
-            },
-        }
-
+    def get_dashboard_widgets(self):
+        schedule = self.get_attendee_schedule_queryset()
+        widgets = [
+            TableWidget(
+                self.request,
+                title="Class Schedule",
+                table_class=AttendeeScheduleTable,
+                queryset=schedule,
+                priority=1,
+                width=12,
+            ),
+            TextWidget(
+                self.request,
+                title="Announcements",
+                content="Announcements from your faction leadership will appear here.",
+                width=6,
+                priority=5,
+            ),
+            ListWidget(
+                self.request,
+                title="Recommended Resources",
+                items=self.get_resource_links(),
+                width=6,
+                priority=6,
+            ),
+        ]
         return widgets
 
     def get_attendee_schedule_queryset(self, faction_enrollment=None):
@@ -205,6 +215,20 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
         """
         first_enrollment = profile.enrollments.first()
         return first_enrollment.faction_enrollment if first_enrollment else None
+
+    def get_resource_links(self):
+        return [
+            {
+                "title": "Packing Checklist",
+                "subtitle": "Make sure you have the right gear for the week.",
+                "url": "#",
+            },
+            {
+                "title": "Camp Code of Conduct",
+                "subtitle": "Review the expectations before arrival.",
+                "url": "#",
+            },
+        ]
 
 
 class RegisterAttendeeView(BaseFormView):

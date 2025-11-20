@@ -20,6 +20,7 @@ from core.mixins.views import (
     FactionScopedMixin,
     PortalPermissionMixin,
 )
+from core.widgets import ActionsWidget, ChartWidget, TableWidget, MetricsWidget, ListWidget
 from user.models import User
 from enrollment.tables.leader import LeaderEnrollmentTable
 from enrollment.models.leader import LeaderEnrollment
@@ -31,7 +32,6 @@ from faction.serializers import LeaderSerializer
 from faction.forms.leader import LeaderForm, PromoteLeaderForm, RegistrationForm
 from faction.tables.faction import FactionOverviewTable
 from faction.tables.leader import LeaderTable
-from faction.charts.faction import FactionReportsChart
 
 User = get_user_model()
 
@@ -151,67 +151,67 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
     template_name = "leader/dashboard.html"
     portal_key = "faction"
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        return context
-
-    def get_widgets_config(self):
-        """Define widgets for the faction leader or admin dashboard."""
-        widgets = {}
-
+    def get_dashboard_widgets(self):
         faction = self.get_scope_faction()
-
         if not faction:
-            return widgets
+            return []
 
-        # Shared widgets for both faction leader and admin
-        widgets.update(
-            {
-                "faction_overview": {
-                    "table_class": FactionOverviewTable,
-                    "queryset": self.get_faction_overview_queryset(),
-                    "priority": 1,
-                    "title": "Faction Overview",
-                },
-                # "announcements": {
-                #     "table_class": AnnouncementsTable,
-                #     "queryset": self.get_announcements_queryset(),
-                #     "priority": 4,
-                #     "title": "Important Announcements",
-                # },
-            }
-        )
+        widgets = [
+            MetricsWidget(
+                self.request,
+                title="Snapshot",
+                metrics=self.get_leader_metrics(),
+                priority=0,
+                width=12,
+            ),
+            TableWidget(
+                self.request,
+                title="Faction Overview",
+                table_class=FactionOverviewTable,
+                queryset=self.get_faction_overview_queryset(),
+                priority=1,
+                width=6,
+            )
+        ]
 
-        # Additional widgets for Faction Leader Admins
         if self.request.user.is_admin:
-            widgets.update(
-                {
-                    "faction_reports": {
-                        "chart_class": FactionReportsChart,
-                        "data_source": self.get_faction_reports_data(),
-                        "priority": 2,
-                        "title": "Faction Enrollment Reports",
-                    },
-                    # "manage_announcements": {
-                    #     "form_class": ManageAnnouncementsForm,
-                    #     "priority": 10,
-                    #     "title": "Manage Announcements",
-                    # },
-                }
+            widgets.append(
+                ChartWidget(
+                    self.request,
+                    title="Faction Enrollment Reports",
+                    chart_config=self.get_faction_reports_chart_config(),
+                    priority=2,
+                    width=6,
+                )
+            )
+            widgets.append(
+                ListWidget(
+                    self.request,
+                    title="Leadership Resources",
+                    items=self.get_leader_resources(),
+                    priority=6,
+                    width=6,
+                )
             )
         else:
-            # Widgets specifically for Faction Leaders
-            widgets.update(
-                {
-                    "quick_actions": {
-                        "actions": self.get_quick_actions(),
-                        "priority": 8,
-                        "title": "Quick Actions",
-                    },
-                }
+            widgets.append(
+                ActionsWidget(
+                    self.request,
+                    title="Quick Actions",
+                    actions=self.get_quick_actions(),
+                    priority=8,
+                    width=4,
+                )
             )
-
+            widgets.append(
+                ListWidget(
+                    self.request,
+                    title="Next Steps",
+                    items=self.get_leader_resources(),
+                    priority=9,
+                    width=8,
+                )
+            )
         return widgets
 
     def get_faction_overview_queryset(self):
@@ -230,20 +230,42 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
 
     
     def get_faction_reports_data(self):
-        """Return data for faction reports."""
+        """Return aggregated enrollment data for the chart widget."""
         faction = self.request.user.leaderprofile_profile.faction
-        # Prepare enrollment data
         enrollments_by_faction = (
             FactionEnrollment.objects.filter(faction=faction)
             .values("faction__name")
             .annotate(count=Count("id"))
         )
 
-        # Convert queryset to a list of dictionaries for the chart
         return [
             {"label": item["faction__name"], "count": item["count"]}
             for item in enrollments_by_faction
         ]
+
+    def get_faction_reports_chart_config(self):
+        data = self.get_faction_reports_data()
+        labels = [item["label"] for item in data]
+        values = [item["count"] for item in data]
+        return {
+            "type": "bar",
+            "data": {
+                "labels": labels,
+                "datasets": [
+                    {
+                        "label": "Enrollments",
+                        "backgroundColor": "#0077cc",
+                        "borderColor": "#005999",
+                        "data": values,
+                    }
+                ],
+            },
+            "options": {
+                "responsive": True,
+                "maintainAspectRatio": False,
+                "scales": {"y": {"beginAtZero": True}},
+            },
+        }
 
 
     def get_quick_actions(self):
@@ -251,6 +273,29 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
         return [
             #{"label": "Create Announcement", "url": reverse("announcements:create")},
             {"label": "Add Attendee", "url": reverse("attendees:new")},
+        ]
+
+    def get_leader_metrics(self):
+        faction = self.get_scope_faction()
+        attendee_count = faction.member_count(user_type="attendee") if faction else 0
+        leader_count = faction.member_count(user_type="leader") if faction else 0
+        return [
+            {"label": "Leaders", "value": leader_count},
+            {"label": "Attendees", "value": attendee_count},
+        ]
+
+    def get_leader_resources(self):
+        return [
+            {
+                "title": "Faction Roster",
+                "subtitle": "Review attendee contact info.",
+                "url": reverse("attendees:index"),
+            },
+            {
+                "title": "Weekly Schedule",
+                "subtitle": "Confirm your next session assignments.",
+                "url": reverse("leaders:manage"),
+            },
         ]
 
 

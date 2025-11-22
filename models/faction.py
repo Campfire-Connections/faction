@@ -13,7 +13,7 @@ from core.mixins import models as mixins
 from core.mixins import settings as stgs
 from enrollment.models.faction import FactionEnrollment
 
-from ..managers.faction import FactionManager
+from faction.managers.faction import FactionManager
 
 
 class Faction(

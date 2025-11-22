@@ -23,6 +23,7 @@ from enrollment.tables.faction import FactionEnrollmentTable
 from user.models import User
 from core.mixins.forms import FormValidationMixin, SuccessMessageMixin
 from core.mixins.models import SlugMixin, TrackChangesMixin, SoftDeleteMixin
+from core.views.base import build_tables_from_config
 
 from ..models.faction import Faction
 from ..forms.faction import FactionForm, ChildFactionForm
@@ -118,11 +119,9 @@ class ManageView(
 ):
     template_name = "faction/manage.html"
 
-    def get_tables(self):
+    def get_tables_config(self):
         faction = self.get_faction()
-        child_factions = Faction.objects.filter(
-            parent=faction, is_deleted=False
-        )  # Avoid showing deleted factions
+        child_factions = Faction.objects.filter(parent=faction, is_deleted=False)
 
         leaders_qs = User.objects.filter(
             user_type="LEADER", leaderprofile__faction=faction
@@ -131,26 +130,36 @@ class ManageView(
             user_type="ATTENDEE", attendeeprofile__faction__parent=faction
         ).select_related("attendeeprofile")
 
-        return [
-            LeaderTable(leaders_qs),
-            AttendeeTable(attendees_qs),
-            FactionEnrollmentTable(FactionEnrollment.objects.filter(faction=faction)),
-            ChildFactionTable(child_factions),
-        ]
+        return {
+            "leaders": {"class": LeaderTable, "queryset": leaders_qs},
+            "attendees": {"class": AttendeeTable, "queryset": attendees_qs},
+            "enrollments": {
+                "class": FactionEnrollmentTable,
+                "queryset": FactionEnrollment.objects.filter(faction=faction),
+            },
+            "child_factions": {
+                "class": ChildFactionTable,
+                "queryset": child_factions,
+            },
+        }
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         faction = self.get_faction()
 
-        tables_with_names = [
-            {
-                "table": table,
-                "name": self.get_table_name(table),
-                "create_url": table.get_url("add", context={"slug": faction.slug}),
-                "icon": getattr(table, "add_icon", None),
-            }
-            for table in self.get_tables()
-        ]
+        tables = build_tables_from_config(
+            self.request, self.get_tables_config(), default_paginate=None
+        )
+        tables_with_names = []
+        for table in tables.values():
+            tables_with_names.append(
+                {
+                    "table": table,
+                    "name": self.get_table_name(table),
+                    "create_url": table.get_url("add", context={"slug": faction.slug}),
+                    "icon": getattr(table, "add_icon", None),
+                }
+            )
 
         context.update(
             {

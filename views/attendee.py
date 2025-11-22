@@ -18,11 +18,14 @@ from core.mixins.views import (
     FactionScopedMixin,
     PortalPermissionMixin,
 )
-from core.dashboard_data import get_attendee_resources, get_attendee_announcements
+from core.dashboard_data import (
+    get_attendee_resources,
+    get_attendee_announcements,
+    get_attendee_schedule,
+)
 from enrollment.tables.attendee_class import ClassScheduleTable
 from enrollment.tables.attendee import AttendeeEnrollmentTable, AttendeeScheduleTable
 from enrollment.models.attendee import AttendeeEnrollment
-from enrollment.models.attendee_class import AttendeeClassEnrollment
 
 from ..models.attendee import AttendeeProfile
 from ..serializers import AttendeeSerializer
@@ -163,33 +166,9 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
     template_name = "attendee/dashboard.html"
     portal_key = "attendee"
 
-    def get_attendee_schedule_queryset(self, faction_enrollment=None):
-        """Fetch data for class schedule widget."""
-        profile = getattr(self.request.user, "attendeeprofile_profile", None)
-        if not profile:
-            return AttendeeClassEnrollment.objects.none()
-
-        if not faction_enrollment:
-            faction_enrollment = self.get_default_faction_enrollment(profile)
-
-        if not faction_enrollment:
-            return AttendeeClassEnrollment.objects.none()
-
-        return AttendeeClassEnrollment.objects.filter(
-            attendee=profile,
-            attendee_enrollment__faction_enrollment=faction_enrollment,
-        )
-
-    def get_default_faction_enrollment(self, profile):
-        """
-        Fetch the default faction enrollment for an attendee profile.
-        Returns None if no enrollment is found.
-        """
-        first_enrollment = profile.enrollments.first()
-        return first_enrollment.faction_enrollment if first_enrollment else None
-
     def get_attendee_schedule_widget(self, _definition):
-        queryset = self.get_attendee_schedule_queryset()
+        profile = getattr(self.request.user, "attendeeprofile_profile", None)
+        queryset = get_attendee_schedule(profile)
         return {"table_class": AttendeeScheduleTable, "queryset": queryset}
 
     def get_attendee_announcements_widget(self, _definition):

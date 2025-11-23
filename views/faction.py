@@ -39,6 +39,7 @@ from ..serializers import FactionSerializer
 
 
 class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
+    model = LeaderProfile
     table_class = RosterTable
     template_name = "faction/roster.html"
     portal_key = "faction"
@@ -65,6 +66,9 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
             faction_id__in=faction_ids
         ).select_related("user", "organization", "faction")
         return list(leaders_qs) + list(attendees_qs)
+
+    def get_queryset(self):
+        return self.get_table_data()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

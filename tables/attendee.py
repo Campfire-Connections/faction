@@ -5,13 +5,13 @@ from ..models.attendee import AttendeeProfile
 
 
 class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
-    username = tables.Column(accessor="user.username", verbose_name="Username")
-    first_name = tables.Column(accessor="user.first_name", verbose_name="First Name")
-    last_name = tables.Column(accessor="user.last_name", verbose_name="Last Name")
-    email = tables.Column(accessor="user.email", verbose_name="Email")
-    faction = tables.Column(accessor="faction.name", verbose_name="Faction")
+    username = tables.Column(accessor="user__username", verbose_name="Username")
+    first_name = tables.Column(accessor="user__first_name", verbose_name="First Name")
+    last_name = tables.Column(accessor="user__last_name", verbose_name="Last Name")
+    email = tables.Column(accessor="user__email", verbose_name="Email")
+    faction = tables.Column(accessor="faction__name", verbose_name="Faction")
     organization = tables.Column(
-        accessor="organization.name", verbose_name="Organization"
+        accessor="organization__name", verbose_name="Organization"
     )
 
     class Meta:

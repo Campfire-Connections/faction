@@ -6,14 +6,14 @@ from ..models.leader import LeaderProfile
 
 
 class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
-    username = tables.Column(accessor="user.username", verbose_name="Username")
-    first_name = tables.Column(accessor="user.first_name", verbose_name="First Name")
-    last_name = tables.Column(accessor="user.last_name", verbose_name="Last Name")
-    email = tables.Column(accessor="user.email", verbose_name="Email")
+    username = tables.Column(accessor="user__username", verbose_name="Username")
+    first_name = tables.Column(accessor="user__first_name", verbose_name="First Name")
+    last_name = tables.Column(accessor="user__last_name", verbose_name="Last Name")
+    email = tables.Column(accessor="user__email", verbose_name="Email")
     is_admin = tables.Column(accessor="is_admin", verbose_name="Is Faction Admin")
-    faction = tables.Column(accessor="faction.name", verbose_name="Faction")
+    faction = tables.Column(accessor="faction__name", verbose_name="Faction")
     organization = tables.Column(
-        accessor="organization.name", verbose_name="Organization"
+        accessor="organization__name", verbose_name="Organization"
     )
 
     class Meta:

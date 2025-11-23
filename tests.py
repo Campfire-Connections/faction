@@ -7,6 +7,8 @@ from core.utils import is_leader_admin
 from user.models import User
 from faction.models.leader import LeaderProfile
 from faction.views.faction import ManageView as FactionManageView
+from faction.forms.leader import LeaderForm
+from faction.serializers import LeaderSerializer
 
 
 class LeaderAdminPermissionTests(BaseDomainTestCase):
@@ -62,3 +64,43 @@ class SlugOnlyUrlTests(TestCase):
         # Smoke test to ensure slug-based routing is expected on show/update/delete
         view = FactionManageView()
         self.assertIsNone(getattr(view, "slug_url_kwarg", None))
+
+
+class LeaderFormAndSerializerTests(BaseDomainTestCase):
+    def setUp(self):
+        super().setUp()
+        with mute_profile_signals():
+            self.user = User.objects.create_user(
+                username="leader.form",
+                password="pass12345",
+                email="leader.form@example.com",
+                user_type=User.UserType.LEADER,
+            )
+        self.profile = LeaderProfile(
+            user=self.user,
+            organization=self.organization,
+            faction=self.faction,
+            is_admin=False,
+        )
+
+    def test_leader_form_sets_admin_flag(self):
+        form = LeaderForm(
+            data={
+                "is_admin": True,
+                "user_username": "leader.form",
+                "user_email": "leader.form@example.com",
+                "user_first_name": "Form",
+                "user_last_name": "Leader",
+            },
+            instance=self.profile,
+        )
+        self.assertTrue(form.is_valid())
+        saved = form.save()
+        self.assertTrue(saved.is_admin)
+
+    def test_leader_serializer_includes_admin_field(self):
+        self.profile.is_admin = True
+        self.profile.save()
+        data = LeaderSerializer(self.profile).data
+        self.assertIn("is_admin", data)
+        self.assertTrue(data["is_admin"])

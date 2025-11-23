@@ -10,6 +10,7 @@ from faction.views.faction import (
     UpdateView,
     DeleteView,
     ManageView,
+    RosterView,
 )
 
 

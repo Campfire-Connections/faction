@@ -161,13 +161,11 @@ class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
     def get_tables_config(self):
         faction = self.get_scope_object()
 
-        leaders_qs = User.objects.filter(
-            user_type="LEADER", leaderprofile__faction=faction
-        ).select_related("leaderprofile")
+        leaders_qs = LeaderProfile.objects.filter(faction=faction).select_related("user")
 
-        attendees_qs = User.objects.filter(
-            user_type="ATTENDEE", attendeeprofile__faction__parent=faction
-        ).select_related("attendeeprofile")
+        attendees_qs = AttendeeProfile.objects.filter(
+            faction__parent=faction
+        ).select_related("user")
 
         child_factions_qs = Faction.objects.filter(
             parent=faction, is_deleted=False

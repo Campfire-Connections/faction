@@ -95,7 +95,8 @@ class LeaderFormAndSerializerTests(BaseDomainTestCase):
             instance=self.profile,
         )
         self.assertTrue(form.is_valid())
-        saved = form.save()
+        with mute_profile_signals():
+            saved = form.save()
         self.assertTrue(saved.is_admin)
 
     def test_leader_serializer_includes_admin_field(self):

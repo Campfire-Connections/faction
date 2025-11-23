@@ -45,11 +45,11 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, Tem
     def get_tables(self):
         faction = self.get_faction()
         leaders_qs = User.objects.filter(
-            user_type=User.UserType.LEADER, leaderprofile__faction=faction
-        ).select_related("leaderprofile")
+            user_type=User.UserType.LEADER, leaderprofile_profile__faction=faction
+        ).select_related("leaderprofile_profile")
         attendees_qs = User.objects.filter(
-            user_type=User.UserType.ATTENDEE, attendeeprofile__faction=faction
-        ).select_related("attendeeprofile")
+            user_type=User.UserType.ATTENDEE, attendeeprofile_profile__faction=faction
+        ).select_related("attendeeprofile_profile")
         return [
             LeaderTable(leaders_qs, request=self.request, user=self.request.user),
             AttendeeTable(attendees_qs, request=self.request, user=self.request.user),

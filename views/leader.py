@@ -68,10 +68,10 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     template_name = "leader/list.html"
     context_object_name = "leader"
     paginate_by = 10
+    faction_kwarg = "slug"
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        queryset = queryset.select_related("user", "faction", "organization")
+        queryset = LeaderProfile.objects.select_related("user", "faction", "organization")
         faction = self.get_scope_faction()
         if faction:
             queryset = queryset.filter(faction=faction)

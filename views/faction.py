@@ -28,6 +28,8 @@ from enrollment.models.faction import FactionEnrollment
 from user.models import User
 
 from ..models.faction import Faction
+from ..models.leader import LeaderProfile
+from ..models.attendee import AttendeeProfile
 from ..forms.faction import FactionForm, ChildFactionForm
 from ..tables.faction import FactionTable, ChildFactionTable
 from ..tables.attendee import AttendeeTable
@@ -44,12 +46,12 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, Tem
 
     def get_tables(self):
         faction = self.get_faction()
-        leaders_qs = User.objects.filter(
-            user_type=User.UserType.LEADER, leaderprofile_profile__faction=faction
-        ).select_related("leaderprofile_profile")
-        attendees_qs = User.objects.filter(
-            user_type=User.UserType.ATTENDEE, attendeeprofile_profile__faction=faction
-        ).select_related("attendeeprofile_profile")
+        leaders_qs = LeaderProfile.objects.filter(
+            faction=faction
+        ).select_related("user", "organization", "faction")
+        attendees_qs = AttendeeProfile.objects.filter(
+            faction=faction
+        ).select_related("user", "organization", "faction")
         return [
             LeaderTable(leaders_qs, request=self.request, user=self.request.user),
             AttendeeTable(attendees_qs, request=self.request, user=self.request.user),

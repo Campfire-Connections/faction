@@ -4,6 +4,8 @@ from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from rest_framework import viewsets
+from django.views.generic import TemplateView
+from django_tables2 import MultiTableMixin
 
 from core.views.base import (
     BaseListView,

@@ -54,6 +54,9 @@ class IndexView(FactionScopedMixin, BaseTableListView):
             queryset = queryset.filter(faction_id__in=faction_ids)
         return queryset
 
+    def get_table_data(self):
+        return list(self.get_queryset())
+
 
 class CreateView(LoginRequiredMixin, BaseCreateView):
     model = AttendeeProfile

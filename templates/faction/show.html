@@ -1,0 +1,19 @@
+{% extends "base/layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ faction.name }}</h1>
+    {% if parent_faction %}
+        <p class="text-muted">Parent faction: <a href="{% url 'factions:show' faction_slug=parent_faction.slug %}">{{ parent_faction.name }}</a></p>
+    {% endif %}
+    {% if faction.description %}<p>{{ faction.description }}</p>{% endif %}
+
+    {% if child_factions %}
+        <h3>Subfactions</h3>
+        <ul>
+            {% for child in child_factions %}
+                <li><a href="{% url 'factions:show_child' faction_slug=faction.slug child_slug=child.slug %}">{{ child.name }}</a></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

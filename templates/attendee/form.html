@@ -1,0 +1,20 @@
+{% extends 'base/layout.html' %}
+{% block content %}
+<div class="container">
+    <br><br><br><br>
+    <h1>{% if object %}Update Attendee{% else %}Add Attendee{% endif %}</h1>
+    <section class="card">
+        <form method="post">
+            {% csrf_token %}
+            <section>
+                <h2>Attendee Details</h2>
+                <hr>
+                {{ form.as_p }}
+            </section>
+            <button type="submit" class="btn btn-primary">
+                {% if object %}Save Changes{% else %}Create Attendee{% endif %}
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}

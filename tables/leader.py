@@ -32,13 +32,9 @@ class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
 
     urls = {
         "add": {
-            "url_name": "factions:new_leader",
-            "kwargs": {"faction_slug": "faction__slug"},
+            "name": "factions:leaders:new",
+            "kwargs": {"faction_slug": "faction_slug"},
             "icon": "fa-user-plus",
-        },
-        "edit": {
-            "url_name": "leaders:show",
-            "kwargs": {"slug": "slug"},
         },
     }
     url_namespace = "leaders"
@@ -51,13 +47,29 @@ class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
         """
         Override to ensure show/edit/delete use slug-based leader routes.
         """
-        if not record:
-            return super().get_url(action, record=record, context=context)
+        faction_slug = (
+            (context or {}).get("faction_slug")
+            or getattr(record, "faction_slug", None)
+            or getattr(getattr(record, "faction", None), "slug", None)
+        )
+        if action == "add":
+            if faction_slug:
+                return reverse("factions:leaders:new", kwargs={"faction_slug": faction_slug})
+            return None
 
         if action == "show":
-            return reverse("leaders:show", kwargs={"slug": record.slug})
+            return reverse(
+                "factions:leaders:show",
+                kwargs={"faction_slug": faction_slug, "slug": record.slug},
+            )
         if action == "edit":
-            return reverse("leaders:edit", kwargs={"slug": record.slug})
+            return reverse(
+                "factions:leaders:edit",
+                kwargs={"faction_slug": faction_slug, "slug": record.slug},
+            )
         if action == "delete":
-            return reverse("leaders:delete", kwargs={"slug": record.slug})
+            return reverse(
+                "factions:leaders:delete",
+                kwargs={"faction_slug": faction_slug, "slug": record.slug},
+            )
         return super().get_url(action, record=record, context=context)

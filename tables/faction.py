@@ -26,6 +26,8 @@ class FactionTable(ActionsColumnMixin, tables.Table):
 
 
 class ChildFactionTable(ActionsColumnMixin, tables.Table):
+    debug_mode = False
+
     class Meta:
         model = Faction
         fields = ("name", "description", "member_count")
@@ -38,9 +40,12 @@ class ChildFactionTable(ActionsColumnMixin, tables.Table):
 
     url_namespace = "factions"
     urls = {
-        "add": {"name": "factions:new_child", "kwargs": {"slug": "parent__slug"}},
-        "show": {"name": "factions:show", "kwargs": {"slug": "slug"}},
-        "edit": {"name": "factions:update", "kwargs": {"slug": "slug"}},
+        "add": {"name": "factions:new_child", "kwargs": {"faction_slug": "parent__slug"}},
+        "show": {
+            "name": "factions:show_child",
+            "kwargs": {"faction_slug": "parent__slug", "child_slug": "slug"},
+        },
+        "edit": {"name": "factions:update", "kwargs": {"faction_slug": "slug"}},
     }
 
 

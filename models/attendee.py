@@ -9,8 +9,8 @@ from user.models import BaseUserProfile
 
 class AttendeeProfile(BaseUserProfile):
     class Meta:
-        verbose_name = "Attendee Profile"
-        verbose_name_plural = "Attendee Profiles"
+        verbose_name = "Attendee"
+        verbose_name_plural = "Attendees"
         constraints = [
             models.UniqueConstraint(
                 fields=["organization", "slug"],

@@ -10,8 +10,8 @@ from user.models import User, BaseUserProfile
 
 class LeaderProfile(BaseUserProfile):
     class Meta:
-        verbose_name = "Leader Profile"
-        verbose_name_plural = "Leader Profiles"
+        verbose_name = "Leader"
+        verbose_name_plural = "Leaders"
         constraints = [
             models.UniqueConstraint(
                 fields=["organization", "slug"],

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container">
     <br><br><br><br>
-    <h1>Update Leader</h1>
+    <h1>{% if object %}Update Leader{% else %}Add Leader{% endif %}</h1>
     <section class="card">
     <form method="post">
         {% csrf_token %}
@@ -11,12 +11,6 @@
             <h2>Leader Details</h2>
             <hr>
             {{ form.as_p }}
-        </section>
-
-        <section>
-            <h2>Leader Profile</h2>
-            <hr>
-            {{ leader_profile_form.as_p }}
         </section>
 
         <button type="submit" class="btn btn-primary">Save Changes</button>

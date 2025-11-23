@@ -17,6 +17,8 @@ class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
 
     class Meta:
         model = AttendeeProfile
+        verbose_name = "Attendee"
+        verbose_name_plural = "Attendees"
         template_name = "django_tables2/bootstrap4.html"
         fields = (
             "username",
@@ -42,13 +44,30 @@ class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
         """
         Ensure attendee routes use slug consistently.
         """
-        if not record:
-            return super().get_url(action, record=record, context=context)
+        faction_slug = (
+            (context or {}).get("faction_slug")
+            or getattr(record, "faction_slug", None)
+            or getattr(getattr(record, "faction", None), "slug", None)
+        )
+
+        if action == "add":
+            if faction_slug:
+                return reverse("factions:attendees:new", kwargs={"faction_slug": faction_slug})
+            return None
 
         if action == "show":
-            return reverse("attendees:show", kwargs={"slug": record.slug})
+            return reverse(
+                "factions:attendees:show",
+                kwargs={"faction_slug": faction_slug, "slug": record.slug},
+            )
         if action == "edit":
-            return reverse("attendees:edit", kwargs={"slug": record.slug})
+            return reverse(
+                "factions:attendees:edit",
+                kwargs={"faction_slug": faction_slug, "slug": record.slug},
+            )
         if action == "delete":
-            return reverse("attendees:delete", kwargs={"slug": record.slug})
+            return reverse(
+                "factions:attendees:delete",
+                kwargs={"faction_slug": faction_slug, "slug": record.slug},
+            )
         return super().get_url(action, record=record, context=context)

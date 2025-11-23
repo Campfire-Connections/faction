@@ -40,10 +40,10 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     template_name = "attendee/list.html"
     context_object_name = "attendee"
     paginate_by = 10
-    faction_kwarg = "slug"
+    faction_kwarg = "faction_slug"
 
     def get_scope_faction(self):
-        slug = self.kwargs.get("slug")
+        slug = self.kwargs.get("faction_slug") or self.kwargs.get("slug")
         if slug:
             return get_object_or_404(Faction, slug=slug)
         return super().get_scope_faction()
@@ -65,7 +65,7 @@ class IndexView(FactionScopedMixin, BaseTableListView):
         return list(self.get_queryset())
 
 
-class CreateView(LoginRequiredMixin, BaseCreateView):
+class CreateView(LoginRequiredMixin, FactionScopedMixin, BaseCreateView):
     model = AttendeeProfile
     form_class = AttendeeForm
     template_name = "attendee/form.html"
@@ -79,6 +79,27 @@ class CreateView(LoginRequiredMixin, BaseCreateView):
             kwargs={"faction_slug": self.object.faction.slug},
         )
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["scope_faction"] = self.get_scope_faction()
+        return kwargs
+
+    def get_initial(self):
+        initial = super().get_initial()
+        faction = self.get_scope_faction()
+        if faction:
+            initial.setdefault("faction", faction)
+            initial.setdefault("organization", faction.organization)
+        return initial
+
+    def form_valid(self, form):
+        faction = form.cleaned_data.get("faction") or self.get_scope_faction()
+        if faction:
+            form.instance.faction = faction
+            if faction.organization:
+                form.instance.organization = faction.organization
+        return super().form_valid(form)
+
 
 class UpdateView(LoginRequiredMixin, BaseUpdateView):
     model = AttendeeProfile
@@ -91,6 +112,11 @@ class UpdateView(LoginRequiredMixin, BaseUpdateView):
             "factions:attendees:index",
             kwargs={"faction_slug": self.object.faction.slug},
         )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["scope_faction"] = self.get_scope_faction()
+        return kwargs
 
 
 class PromoteView(LoginRequiredMixin, BaseUpdateView):

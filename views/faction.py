@@ -89,7 +89,6 @@ class CreateView(SlugMixin, BaseCreateView):
     form_class = FactionForm
     template_name = "faction/form.html"
     success_message = "Faction created successfully!"
-    success_url = reverse_lazy("factions:manage")
 
     def form_valid(self, form):
         # Ensure slug exists
@@ -101,6 +100,9 @@ class CreateView(SlugMixin, BaseCreateView):
             Organization, pk=self.request.user.organization_id
         )
         return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("factions:show", kwargs={"faction_slug": self.object.slug})
 
 
 class UpdateView(TrackChangesMixin, BaseUpdateView):
@@ -146,26 +148,26 @@ class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
 
     def get_scope_object(self):
         """Return the faction associated with the leader."""
+        slug = self.kwargs.get("faction_slug")
+        if slug:
+            return get_object_or_404(Faction, slug=slug, is_deleted=False)
         profile = get_leader_profile(self.request.user)
         faction_id = getattr(profile, "faction_id", None)
         return get_object_or_404(Faction, id=faction_id, is_deleted=False)
-
-    def get_tables(self):
-        tables_config = self.get_tables_config()
-        tables = {}
-        for name, cfg in tables_config.items():
-            table_class = cfg["class"]
-            qs = cfg["queryset"]
-            tables[name] = table_class(qs, request=self.request, user=self.request.user)
-        return tables
 
     def get_tables_config(self):
         faction = self.get_scope_object()
 
         leaders_qs = LeaderProfile.objects.filter(faction=faction).select_related("user")
 
+        attendee_ids = []
+        stack = [faction]
+        while stack:
+            current = stack.pop()
+            attendee_ids.append(current.id)
+            stack.extend(list(current.children.all()))
         attendees_qs = AttendeeProfile.objects.filter(
-            faction__parent=faction
+            faction_id__in=attendee_ids
         ).select_related("user")
 
         child_factions_qs = Faction.objects.filter(
@@ -176,20 +178,53 @@ class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
             "leaders": {
                 "class": LeaderTable,
                 "queryset": leaders_qs,
+                "context": {"faction_slug": faction.slug},
             },
             "attendees": {
                 "class": AttendeeTable,
                 "queryset": attendees_qs,
+                "context": {"faction_slug": faction.slug},
             },
             "enrollments": {
                 "class": FactionEnrollmentTable,
                 "queryset": FactionEnrollment.objects.filter(faction=faction),
+                "context": {"faction_slug": faction.slug},
             },
             "child_factions": {
                 "class": ChildFactionTable,
                 "queryset": child_factions_qs,
+                "context": {"faction_slug": faction.slug},
             },
         }
+
+    def get_context_data(self, **kwargs):
+        # Bypass MultiTableMixin's get_context_data, which expects self.tables, and
+        # instead leverage the BaseManageView helpers to build tables from config.
+        context = TemplateView.get_context_data(self, **kwargs)
+
+        tables = self.build_tables()
+        formatted = []
+        for table in tables.values():
+            model_meta = getattr(table, "Meta", None)
+            model = getattr(model_meta, "model", None) if model_meta else None
+            verbose_name = model._meta.verbose_name.title() if model else ""
+            verbose_name_plural = model._meta.verbose_name_plural.title() if model else ""
+            formatted.append(
+                {
+                    "table": table,
+                    "name": verbose_name or table.__class__.__name__,
+                    "name_plural": verbose_name_plural or verbose_name or table.__class__.__name__,
+                    "create_url": getattr(table, "add_url", None),
+                    "icon": getattr(table, "add_icon", None),
+                }
+            )
+
+        context.update(
+            scope_object=self.get_scope_object(),
+            faction=self.get_scope_object(),
+            tables_with_names=formatted,
+        )
+        return context
 
 
 class ShowView(BaseSlugOrPkObjectMixin, BaseDetailView):
@@ -197,6 +232,22 @@ class ShowView(BaseSlugOrPkObjectMixin, BaseDetailView):
     template_name = "faction/show.html"
     context_object_name = "faction"
     object_slug_kwarg = "faction_slug"
+
+    def get_object(self, queryset=None):
+        slug = (
+            self.kwargs.get("child_slug")
+            or self.kwargs.get("faction_slug")
+            or self.kwargs.get("slug")
+        )
+        return get_object_or_404(Faction, slug=slug, is_deleted=False)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        faction = context.get("faction")
+        if faction:
+            context["child_factions"] = faction.children.filter(is_deleted=False)
+            context["parent_faction"] = faction.parent
+        return context
 
 
 class CreateChildView(BaseChildCreateView):
@@ -206,7 +257,7 @@ class CreateChildView(BaseChildCreateView):
     success_message = "Child faction created successfully!"
 
     parent_model = Faction
-    parent_kwarg = "slug"
+    parent_kwarg = "faction_slug"
     parent_field = "parent"
 
     def form_valid(self, form):
@@ -214,7 +265,7 @@ class CreateChildView(BaseChildCreateView):
 
         if not parent.organization:
             messages.error(self.request, "Parent faction has no organization.")
-            return redirect("factions:manage")
+            return redirect("factions:manage", faction_slug=parent.slug)
 
         # Inherit org + parent relationship
         form.instance.organization = parent.organization
@@ -227,7 +278,11 @@ class CreateChildView(BaseChildCreateView):
         return {"parent": parent, "organization": parent.organization}
 
     def get_success_url(self):
-        return reverse("factions:show", kwargs={"slug": self.object.slug})
+        parent = self.get_parent_object()
+        return reverse(
+            "factions:show_child",
+            kwargs={"faction_slug": parent.slug, "child_slug": self.object.slug},
+        )
 
 
 class FactionViewSet(viewsets.ModelViewSet):

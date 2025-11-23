@@ -13,7 +13,7 @@
     {% for item in tables_with_names %}
     <section class="card">
         <h2>
-            {% pluralize_word item.name True %}
+            {{ item.name_plural|default:item.name }}
             <a href="{{ item.create_url }}">
                 {% if item.icon %}
                     <i class="fas {{ item.icon }}"></i>

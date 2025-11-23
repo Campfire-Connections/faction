@@ -20,7 +20,7 @@ from core.dashboard_data import (
     get_leader_metrics,
     get_leader_resource_links,
 )
-from core.utils import is_leader_admin
+from core.utils import is_leader_admin, get_leader_profile
 
 from enrollment.tables.leader import LeaderEnrollmentTable
 from enrollment.models.leader import LeaderEnrollment
@@ -68,7 +68,7 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     template_name = "leader/list.html"
     context_object_name = "leader"
     paginate_by = 10
-    faction_kwarg = "slug"
+    faction_kwarg = "faction_slug"
 
     def get_queryset(self):
         queryset = LeaderProfile.objects.select_related("user", "faction", "organization")
@@ -78,10 +78,37 @@ class IndexView(FactionScopedMixin, BaseTableListView):
         return queryset
 
 
-class CreateView(LoginRequiredMixin, BaseCreateView):
+class CreateView(LoginRequiredMixin, FactionScopedMixin, BaseCreateView):
     model = LeaderProfile
     form_class = LeaderForm
     template_name = "leader/form.html"
+    action = "Create"
+
+    def get_scope_faction(self):
+        slug = self.kwargs.get("faction_slug") or self.kwargs.get("slug")
+        if slug:
+            try:
+                return Faction.objects.get(slug=slug)
+            except Faction.DoesNotExist:
+                return None
+        profile = get_leader_profile(self.request.user)
+        return getattr(profile, "faction", None)
+
+    def get_initial(self):
+        initial = super().get_initial()
+        faction = self.get_scope_faction()
+        if faction:
+            initial.setdefault("faction", faction)
+            initial.setdefault("organization", faction.organization)
+        return initial
+
+    def form_valid(self, form):
+        faction = self.get_scope_faction()
+        if faction:
+            form.instance.faction = faction
+            if faction.organization:
+                form.instance.organization = faction.organization
+        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse(
@@ -90,7 +117,7 @@ class CreateView(LoginRequiredMixin, BaseCreateView):
         )
 
 
-class UpdateView(LoginRequiredMixin, BaseUpdateView):
+class UpdateView(LoginRequiredMixin, FactionScopedMixin, BaseUpdateView):
     model = LeaderProfile
     form_class = LeaderForm
     template_name = "leader/form.html"

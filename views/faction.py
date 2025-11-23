@@ -44,13 +44,23 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, Tem
     def get_faction(self):
         return get_object_or_404(Faction, slug=self.kwargs["slug"], is_deleted=False)
 
+    def _faction_and_descendants(self, faction):
+        ids = []
+        stack = [faction]
+        while stack:
+            current = stack.pop()
+            ids.append(current.id)
+            stack.extend(list(current.children.all()))
+        return ids
+
     def get_tables(self):
         faction = self.get_faction()
+        faction_ids = self._faction_and_descendants(faction)
         leaders_qs = LeaderProfile.objects.filter(
-            faction=faction
+            faction_id__in=faction_ids
         ).select_related("user", "organization", "faction")
         attendees_qs = AttendeeProfile.objects.filter(
-            faction=faction
+            faction_id__in=faction_ids
         ).select_related("user", "organization", "faction")
         return [
             LeaderTable(leaders_qs, request=self.request, user=self.request.user),

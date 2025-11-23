@@ -1,5 +1,6 @@
 # faction/tables/attendee.py
 import django_tables2 as tables
+from django.urls import reverse
 from core.mixins.tables import ActionsColumnMixin, ActionUrlMixin
 from ..models.attendee import AttendeeProfile
 

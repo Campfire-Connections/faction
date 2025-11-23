@@ -1,45 +1,45 @@
 # faction/views/faction.py
 
-from rest_framework import viewsets
-from django.contrib.auth import get_user_model
-from django.urls import reverse_lazy
-from django.views.generic import (
-    ListView as _ListView,
-    CreateView as _CreateView,
-    UpdateView as _UpdateView,
-    DeleteView as _DeleteView,
-    DetailView as _DetailView,
-)
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import TemplateView
-from django_tables2 import MultiTableMixin, SingleTableView
-from django.contrib import messages
+from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect
-from django.core.exceptions import ValidationError
+from django.contrib import messages
+from rest_framework import viewsets
+
+from core.views.base import (
+    BaseListView,
+    BaseCreateView,
+    BaseUpdateView,
+    BaseDeleteView,
+    BaseManageView,
+    BaseChildCreateView,
+    BaseSlugOrPkObjectMixin,
+    BaseIndexByFilterTableView,
+    BaseDetailView,
+)
+from core.mixins.models import SoftDeleteMixin, SlugMixin, TrackChangesMixin
+from core.mixins.views import LoginRequiredMixin, PortalPermissionMixin
+from core.views.base_helpers import build_tables_from_config
+from core.utils import get_leader_profile, is_leader_admin
 
 from organization.models.organization import Organization
 from enrollment.models.faction import FactionEnrollment
-from enrollment.tables.faction import FactionEnrollmentTable
 from user.models import User
-from core.mixins.forms import FormValidationMixin, SuccessMessageMixin
-from core.mixins.models import SlugMixin, TrackChangesMixin, SoftDeleteMixin
-from core.views.base import build_tables_from_config
 
 from ..models.faction import Faction
 from ..forms.faction import FactionForm, ChildFactionForm
-from ..serializers import FactionSerializer
 from ..tables.faction import FactionTable, ChildFactionTable
-from ..tables.leader import LeaderTable
 from ..tables.attendee import AttendeeTable
+from ..tables.leader import LeaderTable
+from ..serializers import FactionSerializer
 
 
-class IndexView(_ListView):
+class IndexView(BaseListView):
     model = Faction
     template_name = "faction/index.html"
     context_object_name = "factions"
 
 
-class CreateView(SlugMixin, SuccessMessageMixin, FormValidationMixin, _CreateView):
+class CreateView(SlugMixin, BaseCreateView):
     model = Faction
     form_class = FactionForm
     template_name = "faction/form.html"
@@ -47,199 +47,133 @@ class CreateView(SlugMixin, SuccessMessageMixin, FormValidationMixin, _CreateVie
     success_url = reverse_lazy("factions:manage")
 
     def form_valid(self, form):
+        # Ensure slug exists
         if not form.instance.slug:
-            form.instance.slug = self.generate_slug(field="name")
+            form.instance.slug = self.generate_slug("name")
+
+        # Attach to the user's organization
         form.instance.organization = get_object_or_404(
             Organization, pk=self.request.user.organization_id
         )
         return super().form_valid(form)
 
 
-class UpdateView(
-    TrackChangesMixin, SuccessMessageMixin, FormValidationMixin, _UpdateView
-):
+class UpdateView(TrackChangesMixin, BaseUpdateView):
     model = Faction
     form_class = FactionForm
     template_name = "faction/form.html"
     success_message = "Faction updated successfully!"
     success_url = reverse_lazy("factions:index")
 
-    def form_valid(self, form):
-        form.instance.updated_by = self.request.user
-        return super().form_valid(form)
 
-
-class DeleteView(SoftDeleteMixin, SuccessMessageMixin, _DeleteView):
+class DeleteView(SoftDeleteMixin, BaseDeleteView):
     model = Faction
     template_name = "faction/confirm_delete.html"
     success_message = "Faction deleted successfully!"
     success_url = reverse_lazy("factions:index")
 
 
-class IndexByOrganizationView(_ListView):
+class IndexByOrganizationView(BaseIndexByFilterTableView):
     model = Faction
+    table_class = FactionTable
     template_name = "faction/index.html"
     context_object_name = "factions"
 
+    lookup_keys = ["organization_pk", "organization_slug"]
+    filter_model = Organization
+    filter_field = "organization"
+    context_object_name_for_filter = "organization"
+
     def get_queryset(self):
-        organization_lookup = self.kwargs.get("organization_pk") or self.kwargs.get(
-            "organization_slug"
-        )
-        organization = get_object_or_404(
-            Organization,
-            pk=(
-                organization_lookup
-                if organization_lookup.isdigit()
-                else organization_lookup
-            ),
-        )
-        return Faction.objects.filter(
-            organization=organization, is_deleted=False
-        )  # Filter out deleted
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        organization_lookup = self.kwargs.get("organization_pk") or self.kwargs.get(
-            "organization_slug"
-        )
-        organization = get_object_or_404(
-            Organization,
-            pk=(
-                organization_lookup
-                if organization_lookup.isdigit()
-                else organization_lookup
-            ),
-        )
-        context["organization"] = organization
-        return context
+        # Apply Base logic + filter out soft-deleted
+        return super().get_queryset().filter(is_deleted=False)
 
 
-class ManageView(
-    LoginRequiredMixin, UserPassesTestMixin, MultiTableMixin, TemplateView
-):
+class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
     template_name = "faction/manage.html"
 
+    def test_func(self):
+        return is_leader_admin(self.request.user)
+
+    def get_scope_object(self):
+        """Return the faction associated with the leader."""
+        profile = get_leader_profile(self.request.user)
+        faction_id = getattr(profile, "faction_id", None)
+        return get_object_or_404(Faction, id=faction_id, is_deleted=False)
+
     def get_tables_config(self):
-        faction = self.get_faction()
-        child_factions = Faction.objects.filter(parent=faction, is_deleted=False)
+        faction = self.get_scope_object()
 
         leaders_qs = User.objects.filter(
             user_type="LEADER", leaderprofile__faction=faction
         ).select_related("leaderprofile")
+
         attendees_qs = User.objects.filter(
             user_type="ATTENDEE", attendeeprofile__faction__parent=faction
         ).select_related("attendeeprofile")
 
+        child_factions_qs = Faction.objects.filter(
+            parent=faction, is_deleted=False
+        )
+
         return {
-            "leaders": {"class": LeaderTable, "queryset": leaders_qs},
-            "attendees": {"class": AttendeeTable, "queryset": attendees_qs},
+            "leaders": {
+                "class": LeaderTable,
+                "queryset": leaders_qs,
+            },
+            "attendees": {
+                "class": AttendeeTable,
+                "queryset": attendees_qs,
+            },
             "enrollments": {
                 "class": FactionEnrollmentTable,
                 "queryset": FactionEnrollment.objects.filter(faction=faction),
             },
             "child_factions": {
                 "class": ChildFactionTable,
-                "queryset": child_factions,
+                "queryset": child_factions_qs,
             },
         }
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        faction = self.get_faction()
 
-        tables = build_tables_from_config(
-            self.request, self.get_tables_config(), default_paginate=None
-        )
-        tables_with_names = []
-        for table in tables.values():
-            tables_with_names.append(
-                {
-                    "table": table,
-                    "name": self.get_table_name(table),
-                    "create_url": table.get_url("add", context={"slug": faction.slug}),
-                    "icon": getattr(table, "add_icon", None),
-                }
-            )
-
-        context.update(
-            {
-                "tables_with_names": tables_with_names,
-                "faction": faction,
-            }
-        )
-        return context
-
-    def get_faction(self):
-        user = self.request.user
-        profile = user.leaderprofile
-        return get_object_or_404(Faction, id=profile.faction_id, is_deleted=False)
-
-    def test_func(self):
-        return self.request.user.user_type == "LEADER" and self.request.user.is_admin
-
-    def get_table_name(self, table):
-        if table.Meta.model == User:
-            first_user = table.data.data.first()
-            if first_user and hasattr(first_user, "user_type"):
-                if first_user.user_type == "LEADER":
-                    return "Leader"
-                if first_user.user_type == "ATTENDEE":
-                    return "Attendee"
-            return "Users"
-        return table.Meta.model._meta.verbose_name.title()
-
-
-class ShowView(_DetailView):
+class ShowView(BaseSlugOrPkObjectMixin, BaseDetailView):
     model = Faction
     template_name = "faction/show.html"
     context_object_name = "faction"
+    object_slug_kwarg = "slug"
 
 
-class CreateChildView(SuccessMessageMixin, FormValidationMixin, _CreateView):
+class CreateChildView(BaseChildCreateView):
     model = Faction
-    template_name = "faction/form.html"
     form_class = ChildFactionForm
+    template_name = "faction/form.html"
     success_message = "Child faction created successfully!"
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        # Fetch the parent faction based on the URL slug and pass it to the form
-        parent_faction = get_object_or_404(
-            Faction.objects.filter(slug=self.kwargs["slug"])
-        )
-        kwargs["initial"] = {
-            "parent": parent_faction,
-            "organization": parent_faction.organization,
-        }
-        return kwargs
+    parent_model = Faction
+    parent_kwarg = "slug"
+    parent_field = "parent"
 
     def form_valid(self, form):
-        """Set parent faction and organization from the parent."""
-        parent_faction = get_object_or_404(
-            Faction.objects.filter(slug=self.kwargs["slug"])
-        )
-        # Check if the parent faction has an associated organization
-        if not parent_faction.organization:
-            messages.error(
-                self.request,
-                "The parent faction does not have an associated organization.",
-            )
-            return redirect(
-                reverse_lazy("factions:manage")
-            )  # Redirect to manage or some appropriate page
+        parent = self.get_parent_object()
 
-        # Set the parent and organization fields
-        form.instance.parent = parent_faction
-        form.instance.organization = parent_faction.organization
+        if not parent.organization:
+            messages.error(self.request, "Parent faction has no organization.")
+            return redirect("factions:manage")
+
+        # Inherit org + parent relationship
+        form.instance.organization = parent.organization
+        form.instance.parent = parent
 
         return super().form_valid(form)
 
+    def get_initial(self):
+        parent = self.get_parent_object()
+        return {"parent": parent, "organization": parent.organization}
+
     def get_success_url(self):
-        return reverse_lazy("factions:show", kwargs={"slug": self.object.slug})
+        return reverse("factions:show", kwargs={"slug": self.object.slug})
 
 
 class FactionViewSet(viewsets.ModelViewSet):
-    queryset = Faction.objects.filter(
-        is_deleted=False
-    )  # Filter out soft-deleted factions
+    queryset = Faction.objects.filter(is_deleted=False)
     serializer_class = FactionSerializer

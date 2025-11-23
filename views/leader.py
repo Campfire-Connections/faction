@@ -1,9 +1,8 @@
 # faction/views/leader.py
 
 from rest_framework import viewsets
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse, reverse_lazy
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate, login
 
 from core.views.base import (
     BaseManageView,
@@ -15,23 +14,21 @@ from core.views.base import (
     BaseFormView,
     BaseDashboardView,
 )
-from core.mixins.views import (
-    FactionScopedMixin,
-    PortalPermissionMixin,
-)
+from core.mixins.views import FactionScopedMixin, PortalPermissionMixin, LoginRequiredMixin
 from core.dashboard_data import (
     get_faction_enrollment_counts,
     get_leader_metrics,
     get_leader_resource_links,
 )
-from user.models import User
+from core.utils import is_leader_admin
+
 from enrollment.tables.leader import LeaderEnrollmentTable
 from enrollment.models.leader import LeaderEnrollment
 
 from faction.models.faction import Faction
 from faction.models.leader import LeaderProfile
 from faction.serializers import LeaderSerializer
-from faction.forms.leader import LeaderForm, PromoteLeaderForm, RegistrationForm
+from faction.forms.leader import LeaderForm, PromoteLeaderForm, RegistrationForm, QuartersAssignmentForm
 from faction.tables.faction import FactionOverviewTable
 from faction.tables.leader import LeaderTable
 
@@ -69,7 +66,6 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     model = LeaderProfile
     table_class = LeaderTable
     template_name = "leader/list.html"
-
     context_object_name = "leader"
     paginate_by = 10
 
@@ -88,8 +84,10 @@ class CreateView(LoginRequiredMixin, BaseCreateView):
     template_name = "leader/form.html"
 
     def get_success_url(self):
-        faction_slug = self.object.faction.slug
-        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
+        return reverse(
+            "factions:leaders:index",
+            kwargs={"faction_slug": self.object.faction.slug},
+        )
 
 
 class UpdateView(LoginRequiredMixin, BaseUpdateView):
@@ -99,26 +97,23 @@ class UpdateView(LoginRequiredMixin, BaseUpdateView):
     action = "Edit"
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
-        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
+        return reverse(
+            "factions:leaders:index",
+            kwargs={"faction_slug": self.object.faction.slug},
+        )
 
 
 class PromoteView(LoginRequiredMixin, BaseUpdateView):
     model = LeaderProfile
     form_class = PromoteLeaderForm
     template_name = "leader/promote.html"
-    # success_url = reverse_lazy("factions:leaders:index")
     action = "Promote"
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
-        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
+        return reverse(
+            "factions:leaders:index",
+            kwargs={"faction_slug": self.object.faction.slug},
+        )
 
 
 class DeleteView(LoginRequiredMixin, BaseDeleteView):
@@ -127,11 +122,10 @@ class DeleteView(LoginRequiredMixin, BaseDeleteView):
     action = "Delete"
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
-        return reverse("factions:leaders:index", kwargs={"faction_slug": faction_slug})
+        return reverse(
+            "factions:leaders:index",
+            kwargs={"faction_slug": self.object.faction.slug},
+        )
 
 
 class LeaderViewSet(viewsets.ModelViewSet):
@@ -167,10 +161,10 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
         ]
 
     def is_leader_admin(self):
-        return self.request.user.is_admin
+        return is_leader_admin(self.request.user)
 
     def is_leader_standard(self):
-        return not self.request.user.is_admin
+        return not is_leader_admin(self.request.user)
 
     def get_leader_metrics_widget(self, _definition):
         faction = self.get_scope_faction()
@@ -218,7 +212,6 @@ class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView
         faction = self.get_scope_faction()
         resources = get_leader_resource_links(faction)
         return {"items": resources}
-
 
 
 class RegisterLeaderView(BaseFormView):

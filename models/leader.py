@@ -23,9 +23,14 @@ class LeaderProfile(BaseUserProfile):
             ),
         ]
 
+    is_admin = models.BooleanField(default=False)
     faction = models.ForeignKey(
         "faction.Faction", on_delete=models.SET_NULL, null=True, blank=True
     )
 
     def get_fallback_chain(self):
         return ["faction", "faction.organization"]
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse("leaders:show", kwargs={"slug": self.slug})

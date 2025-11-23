@@ -36,3 +36,18 @@ class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
     show_url_name = "attendees:show"
     edit_url_name = "attendees:edit"
     delete_url_name = "attendees:delete"
+
+    def get_url(self, action, record=None, context=None):
+        """
+        Ensure attendee routes use slug consistently.
+        """
+        if not record:
+            return super().get_url(action, record=record, context=context)
+
+        if action == "show":
+            return reverse("attendees:show", kwargs={"slug": record.slug})
+        if action == "edit":
+            return reverse("attendees:edit", kwargs={"slug": record.slug})
+        if action == "delete":
+            return reverse("attendees:delete", kwargs={"slug": record.slug})
+        return super().get_url(action, record=record, context=context)

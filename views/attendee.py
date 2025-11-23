@@ -1,8 +1,8 @@
 # faction/views/attendee.py
 
 from rest_framework import viewsets
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse, reverse_lazy
+from django.contrib.auth import authenticate, login
 
 from core.views.base import (
     BaseManageView,
@@ -14,18 +14,17 @@ from core.views.base import (
     BaseFormView,
     BaseDashboardView,
 )
-from core.mixins.views import (
-    FactionScopedMixin,
-    PortalPermissionMixin,
-)
+from core.mixins.views import FactionScopedMixin, PortalPermissionMixin, LoginRequiredMixin
 from core.dashboard_data import (
     get_attendee_resources,
     get_attendee_announcements,
     get_attendee_schedule,
 )
+
 from enrollment.tables.attendee_class import ClassScheduleTable
 from enrollment.tables.attendee import AttendeeEnrollmentTable, AttendeeScheduleTable
 from enrollment.models.attendee import AttendeeEnrollment
+from enrollment.forms.attendee import AttendeeClassAssignmentForm, AttendeeQuartersAssignmentForm
 
 from ..models.attendee import AttendeeProfile
 from ..serializers import AttendeeSerializer
@@ -37,7 +36,6 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     model = AttendeeProfile
     table_class = AttendeeTable
     template_name = "attendee/list.html"
-
     context_object_name = "attendee"
     paginate_by = 10
 
@@ -54,18 +52,14 @@ class CreateView(LoginRequiredMixin, BaseCreateView):
     model = AttendeeProfile
     form_class = AttendeeForm
     template_name = "attendee/form.html"
-    # success_url = reverse_lazy("factions:attendees:index")
     action = "Create"
     success_message = "Attendee created successfully!"
     error_message = "Failed to create attendee."
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
         return reverse(
-            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+            "factions:attendees:index",
+            kwargs={"faction_slug": self.object.faction.slug},
         )
 
 
@@ -73,16 +67,12 @@ class UpdateView(LoginRequiredMixin, BaseUpdateView):
     model = AttendeeProfile
     form_class = AttendeeForm
     template_name = "attendee/form.html"
-    # success_url = reverse_lazy("factions:attendees:index")
     action = "Edit"
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
         return reverse(
-            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+            "factions:attendees:index",
+            kwargs={"faction_slug": self.object.faction.slug},
         )
 
 
@@ -90,32 +80,24 @@ class PromoteView(LoginRequiredMixin, BaseUpdateView):
     model = AttendeeProfile
     form_class = PromoteAttendeeForm
     template_name = "attendee/promote.html"
-    # success_url = reverse_lazy("factions:attendees:index")
     action = "Promote"
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
         return reverse(
-            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+            "factions:attendees:index",
+            kwargs={"faction_slug": self.object.faction.slug},
         )
 
 
 class DeleteView(LoginRequiredMixin, BaseDeleteView):
     model = AttendeeProfile
     template_name = "attendee/confirm_delete.html"
-    # success_url = reverse_lazy("factions:attendees:index")
     action = "Delete"
 
     def get_success_url(self):
-        """
-        Dynamically generate the success URL with variables.
-        """
-        faction_slug = self.object.faction.slug
         return reverse(
-            "factions:attendees:index", kwargs={"faction_slug": faction_slug}
+            "factions:attendees:index",
+            kwargs={"faction_slug": self.object.faction.slug},
         )
 
 
@@ -153,8 +135,8 @@ class ManageView(PortalPermissionMixin, FactionScopedMixin, BaseManageView):
         return {
             "attendee_form": AttendeeForm,
             "promotion_form": PromoteAttendeeForm,
-            "class_form": ClassAssignmentForm,
-            "quarters_form": QuartersAssignmentForm,
+            "class_form": AttendeeClassAssignmentForm,
+            "quarters_form": AttendeeQuartersAssignmentForm,
         }
 
 

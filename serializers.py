@@ -15,7 +15,11 @@ class FactionSerializer(serializers.ModelSerializer):
 class LeaderSerializer(BaseProfileSerializer):
     class Meta(BaseProfileSerializer.Meta):
         model = LeaderProfile
-        fields = BaseProfileSerializer.Meta.fields + ("faction", "organization")
+        fields = BaseProfileSerializer.Meta.fields + (
+            "faction",
+            "organization",
+            "is_admin",
+        )
 
 
 class AttendeeSerializer(BaseProfileSerializer):

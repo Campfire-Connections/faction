@@ -35,3 +35,7 @@ class AttendeeProfile(BaseUserProfile):
         Dynamically fetch enrollments for this attendee.
         """
         return AttendeeEnrollment.objects.filter(attendee=self)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse("attendees:show", kwargs={"slug": self.slug})

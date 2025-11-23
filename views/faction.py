@@ -31,7 +31,8 @@ from ..models.faction import Faction
 from ..models.leader import LeaderProfile
 from ..models.attendee import AttendeeProfile
 from ..forms.faction import FactionForm, ChildFactionForm
-from ..tables.faction import FactionTable, ChildFactionTable, FactionEnrollmentTable
+from ..tables.faction import FactionTable, ChildFactionTable
+from enrollment.tables.faction import FactionEnrollmentTable
 from ..tables.attendee import AttendeeTable
 from ..tables.leader import LeaderTable
 from ..tables.roster import RosterTable

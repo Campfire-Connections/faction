@@ -16,6 +16,7 @@ class RosterTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
     faction = tables.Column(accessor="faction.name", verbose_name="Faction")
 
     class Meta:
+        model = LeaderProfile
         template_name = "django_tables2/bootstrap4.html"
         fields = (
             "username",

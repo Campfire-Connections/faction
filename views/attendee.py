@@ -38,6 +38,7 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     template_name = "attendee/list.html"
     context_object_name = "attendee"
     paginate_by = 10
+    faction_kwarg = "slug"
 
     def get_queryset(self):
         queryset = super().get_queryset()

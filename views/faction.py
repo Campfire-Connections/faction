@@ -45,7 +45,8 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
     portal_key = "faction"
 
     def get_faction(self):
-        return get_object_or_404(Faction, slug=self.kwargs["slug"], is_deleted=False)
+        slug = self.kwargs.get("faction_slug") or self.kwargs.get("slug")
+        return get_object_or_404(Faction, slug=slug, is_deleted=False)
 
     def _faction_and_descendants(self, faction):
         ids = []
@@ -107,6 +108,8 @@ class UpdateView(TrackChangesMixin, BaseUpdateView):
     template_name = "faction/form.html"
     success_message = "Faction updated successfully!"
     success_url = reverse_lazy("factions:index")
+    slug_field = "slug"
+    slug_url_kwarg = "faction_slug"
 
 
 class DeleteView(SoftDeleteMixin, BaseDeleteView):
@@ -114,6 +117,8 @@ class DeleteView(SoftDeleteMixin, BaseDeleteView):
     template_name = "faction/confirm_delete.html"
     success_message = "Faction deleted successfully!"
     success_url = reverse_lazy("factions:index")
+    slug_field = "slug"
+    slug_url_kwarg = "faction_slug"
 
 
 class IndexByOrganizationView(BaseIndexByFilterTableView):
@@ -143,6 +148,15 @@ class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
         profile = get_leader_profile(self.request.user)
         faction_id = getattr(profile, "faction_id", None)
         return get_object_or_404(Faction, id=faction_id, is_deleted=False)
+
+    def get_tables(self):
+        tables_config = self.get_tables_config()
+        tables = {}
+        for name, cfg in tables_config.items():
+            table_class = cfg["class"]
+            qs = cfg["queryset"]
+            tables[name] = table_class(qs, request=self.request, user=self.request.user)
+        return tables
 
     def get_tables_config(self):
         faction = self.get_scope_object()
@@ -183,7 +197,7 @@ class ShowView(BaseSlugOrPkObjectMixin, BaseDetailView):
     model = Faction
     template_name = "faction/show.html"
     context_object_name = "faction"
-    object_slug_kwarg = "slug"
+    object_slug_kwarg = "faction_slug"
 
 
 class CreateChildView(BaseChildCreateView):

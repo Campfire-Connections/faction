@@ -45,7 +45,13 @@ class IndexView(FactionScopedMixin, BaseTableListView):
         queryset = queryset.select_related("user", "faction", "organization")
         faction = self.get_scope_faction()
         if faction:
-            queryset = queryset.filter(faction=faction)
+            faction_ids = []
+            stack = [faction]
+            while stack:
+                current = stack.pop()
+                faction_ids.append(current.id)
+                stack.extend(list(current.children.all()))
+            queryset = queryset.filter(faction_id__in=faction_ids)
         return queryset
 
 

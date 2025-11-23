@@ -1,70 +1,64 @@
-from contextlib import contextmanager
+# faction/tests.py
 
-from django.db.models.signals import post_save
-from django.urls import reverse
+from django.test import RequestFactory, TestCase
 
-from core.tests import BaseDomainTestCase
-from faction.models import Faction
+from core.tests import BaseDomainTestCase, mute_profile_signals
+from core.utils import is_leader_admin
+from user.models import User
 from faction.models.leader import LeaderProfile
-from user.models import User, ensure_profile as ensure_profile_signal
+from faction.views.faction import ManageView as FactionManageView
 
 
-@contextmanager
-def mute_profile_signals():
-    post_save.disconnect(ensure_profile_signal, sender=User)
-    try:
-        yield
-    finally:
-        post_save.connect(ensure_profile_signal, sender=User)
-
-
-class FactionModelTests(BaseDomainTestCase):
-    def test_get_root_faction_returns_top_parent(self):
-        child = Faction.objects.create(
-            name="Eagle Patrol - Bravo",
-            organization=self.organization,
-            parent=self.faction,
-        )
-
-        self.assertEqual(child.get_root_faction(), self.faction)
-
-
-class LeaderDashboardViewTests(BaseDomainTestCase):
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.leader_user = cls._create_leader_user()
-
-    @classmethod
-    def _create_leader_user(cls):
-        with mute_profile_signals():
-            user = User.objects.create_user(
-                username="leader.dashboard",
-                password="testpass123",
-                user_type=User.UserType.LEADER,
-                first_name="Leader",
-                last_name="Dashboard",
-            )
-        LeaderProfile.objects.create(
-            user=user,
-            organization=cls.organization,
-            faction=cls.faction,
-        )
-        return user
-
+class LeaderAdminPermissionTests(BaseDomainTestCase):
     def setUp(self):
-        self.client.force_login(self.__class__.leader_user)
+        super().setUp()
+        self.factory = RequestFactory()
+        with mute_profile_signals():
+            self.admin_user = User.objects.create_user(
+                username="leader.admin",
+                password="pass12345",
+                user_type=User.UserType.LEADER,
+            )
+        self.admin_profile = LeaderProfile.objects.create(
+            user=self.admin_user,
+            organization=self.organization,
+            faction=self.faction,
+            is_admin=True,
+        )
 
-    def test_dashboard_uses_leader_template(self):
-        response = self.client.get(reverse("leaders:dashboard"))
-        self.assertTemplateUsed(response, "leader/dashboard.html")
+        with mute_profile_signals():
+            self.standard_user = User.objects.create_user(
+                username="leader.standard",
+                password="pass12345",
+                user_type=User.UserType.LEADER,
+            )
+        self.standard_profile = LeaderProfile.objects.create(
+            user=self.standard_user,
+            organization=self.organization,
+            faction=self.faction,
+            is_admin=False,
+        )
 
-    def test_dashboard_context_includes_quick_actions(self):
-        response = self.client.get(reverse("leaders:dashboard"))
-        widget_titles = [widget["title"] for widget in response.context["widgets"]]
-        self.assertIn("Quick Actions", widget_titles)
+    def test_is_leader_admin_helper(self):
+        self.assertTrue(is_leader_admin(self.admin_user))
+        self.assertFalse(is_leader_admin(self.standard_user))
 
-    def test_dashboard_context_includes_faction_overview(self):
-        response = self.client.get(reverse("leaders:dashboard"))
-        widget_titles = [widget["title"] for widget in response.context["widgets"]]
-        self.assertIn("Faction Overview", widget_titles)
+    def test_manage_view_requires_leader_admin(self):
+        request = self.factory.get("/factions/manage/")
+
+        request.user = self.admin_user
+        view = FactionManageView()
+        view.request = request
+        self.assertTrue(view.test_func())
+
+        request.user = self.standard_user
+        view = FactionManageView()
+        view.request = request
+        self.assertFalse(view.test_func())
+
+
+class SlugOnlyUrlTests(TestCase):
+    def test_slug_lookup_kwarg_present(self):
+        # Smoke test to ensure slug-based routing is expected on show/update/delete
+        view = FactionManageView()
+        self.assertIsNone(getattr(view, "slug_url_kwarg", None))

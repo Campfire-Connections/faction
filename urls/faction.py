@@ -21,6 +21,7 @@ urlpatterns = [
     path("new/", CreateView.as_view(), name="new"),
     path("<slug:slug>", ShowView.as_view(), name="show"),
     path("<slug:slug>/new", CreateChildView.as_view(), name="new_child"),
+    path("<slug:slug>/roster/", RosterView.as_view(), name="roster"),
     path("<slug:slug>/update/", UpdateView.as_view(), name="update"),
     path("<slug:slug>/delete/", DeleteView.as_view(), name="delete"),
     path(

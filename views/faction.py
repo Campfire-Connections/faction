@@ -33,6 +33,32 @@ from ..tables.leader import LeaderTable
 from ..serializers import FactionSerializer
 
 
+class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, TemplateView):
+    template_name = "faction/roster.html"
+    portal_key = "faction"
+
+    def get_faction(self):
+        return get_object_or_404(Faction, slug=self.kwargs["slug"], is_deleted=False)
+
+    def get_tables(self):
+        faction = self.get_faction()
+        leaders_qs = User.objects.filter(
+            user_type=User.UserType.LEADER, leaderprofile__faction=faction
+        ).select_related("leaderprofile")
+        attendees_qs = User.objects.filter(
+            user_type=User.UserType.ATTENDEE, attendeeprofile__faction=faction
+        ).select_related("attendeeprofile")
+        return [
+            LeaderTable(leaders_qs, request=self.request, user=self.request.user),
+            AttendeeTable(attendees_qs, request=self.request, user=self.request.user),
+        ]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["faction"] = self.get_faction()
+        return context
+
+
 class IndexView(BaseListView):
     model = Faction
     template_name = "faction/index.html"

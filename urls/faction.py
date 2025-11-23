@@ -35,6 +35,10 @@ urlpatterns = [
         include("enrollment.urls.faction", namespace="enrollments"),
     ),
     path(
+        "<slug:faction_slug>/enrollments",
+        include("enrollment.urls.faction", namespace="enrollments"),
+    ),
+    path(
         "<slug:faction_slug>/leaders/",
         include("faction.urls.leader", namespace="leaders"),
     ),

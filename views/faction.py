@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from rest_framework import viewsets
 from django.views.generic import TemplateView
-from django_tables2 import MultiTableMixin
+from django_tables2 import MultiTableMixin, SingleTableView
 
 from core.views.base import (
     BaseListView,
@@ -34,10 +34,12 @@ from ..forms.faction import FactionForm, ChildFactionForm
 from ..tables.faction import FactionTable, ChildFactionTable
 from ..tables.attendee import AttendeeTable
 from ..tables.leader import LeaderTable
+from ..tables.roster import RosterTable
 from ..serializers import FactionSerializer
 
 
-class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, TemplateView):
+class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
+    table_class = RosterTable
     template_name = "faction/roster.html"
     portal_key = "faction"
 
@@ -53,7 +55,7 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, Tem
             stack.extend(list(current.children.all()))
         return ids
 
-    def get_tables(self):
+    def get_table_data(self):
         faction = self.get_faction()
         faction_ids = self._faction_and_descendants(faction)
         leaders_qs = LeaderProfile.objects.filter(
@@ -62,10 +64,7 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, MultiTableMixin, Tem
         attendees_qs = AttendeeProfile.objects.filter(
             faction_id__in=faction_ids
         ).select_related("user", "organization", "faction")
-        return [
-            LeaderTable(leaders_qs, request=self.request, user=self.request.user),
-            AttendeeTable(attendees_qs, request=self.request, user=self.request.user),
-        ]
+        return list(leaders_qs) + list(attendees_qs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

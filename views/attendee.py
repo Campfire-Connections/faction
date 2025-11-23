@@ -27,6 +27,7 @@ from enrollment.models.attendee import AttendeeEnrollment
 from enrollment.forms.attendee import AttendeeClassAssignmentForm, AttendeeQuartersAssignmentForm
 
 from ..models.attendee import AttendeeProfile
+from faction.models.faction import Faction
 from ..serializers import AttendeeSerializer
 from ..forms.attendee import AttendeeForm, PromoteAttendeeForm, RegistrationForm
 from ..tables.attendee import AttendeeTable
@@ -40,6 +41,12 @@ class IndexView(FactionScopedMixin, BaseTableListView):
     paginate_by = 10
     faction_kwarg = "slug"
 
+    def get_scope_faction(self):
+        slug = self.kwargs.get("slug")
+        if slug:
+            return get_object_or_404(Faction, slug=slug)
+        return super().get_scope_faction()
+
     def get_queryset(self):
         queryset = super().get_queryset()
         queryset = queryset.select_related("user", "faction", "organization")
@@ -52,7 +59,7 @@ class IndexView(FactionScopedMixin, BaseTableListView):
                 faction_ids.append(current.id)
                 stack.extend(list(current.children.all()))
             queryset = queryset.filter(faction_id__in=faction_ids)
-        return queryset
+        return queryset.order_by("user__username")
 
     def get_table_data(self):
         return list(self.get_queryset())

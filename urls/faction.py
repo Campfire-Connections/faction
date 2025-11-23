@@ -2,6 +2,7 @@
 
 from django.urls import path, include
 
+from enrollment.views.faction import FactionEnrollmentIndexView
 from faction.views.faction import (
     IndexView,
     ShowView,
@@ -35,9 +36,8 @@ urlpatterns = [
         include("enrollment.urls.faction", namespace="enrollments"),
     ),
     path(
-        "<slug:faction_slug>/enrollments",
-        include("enrollment.urls.faction", namespace="enrollments"),
-    ),
+        "<slug:faction_slug>/enrollments", FactionEnrollmentIndexView.as_view(),
+        name="enrollments_index"),
     path(
         "<slug:faction_slug>/leaders/",
         include("faction.urls.leader", namespace="leaders"),

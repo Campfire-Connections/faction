@@ -49,8 +49,7 @@ class IndexView(FactionScopedMixin, BaseTableListView):
         return super().get_scope_faction()
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        queryset = queryset.select_related("user", "faction", "organization")
+        queryset = AttendeeProfile.objects.select_related("user", "faction", "organization")
         faction = self.get_scope_faction()
         if faction:
             faction_ids = []

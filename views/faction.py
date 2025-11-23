@@ -223,6 +223,7 @@ class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
             scope_object=self.get_scope_object(),
             faction=self.get_scope_object(),
             tables_with_names=formatted,
+            edit_url=reverse_lazy("factions:update", kwargs={"faction_slug": self.get_scope_object().slug}),
         )
         return context
 

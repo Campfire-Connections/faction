@@ -15,6 +15,8 @@ from core.views.base import (
     BaseDashboardView,
 )
 from core.mixins.views import FactionScopedMixin, PortalPermissionMixin, LoginRequiredMixin
+from core.api import BaseModelViewSet
+from core.permissions import IsAuthenticatedAndActive
 from core.dashboard_data import (
     get_faction_enrollment_counts,
     get_leader_metrics,
@@ -155,9 +157,10 @@ class DeleteView(LoginRequiredMixin, BaseDeleteView):
         )
 
 
-class LeaderViewSet(viewsets.ModelViewSet):
+class LeaderViewSet(BaseModelViewSet):
     queryset = LeaderProfile.objects.select_related("user", "faction")
     serializer_class = LeaderSerializer
+    permission_classes = [IsAuthenticatedAndActive]
 
 
 class ShowView(BaseDetailView):

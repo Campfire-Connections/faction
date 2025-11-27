@@ -18,6 +18,8 @@ from core.views.base import (
     BaseIndexByFilterTableView,
     BaseDetailView,
 )
+from core.api import BaseModelViewSet
+from core.permissions import IsAuthenticatedAndActive
 from core.mixins.models import SoftDeleteMixin, SlugMixin, TrackChangesMixin
 from core.mixins.views import LoginRequiredMixin, PortalPermissionMixin
 from core.views.base_helpers import build_tables_from_config
@@ -289,3 +291,4 @@ class CreateChildView(BaseChildCreateView):
 class FactionViewSet(viewsets.ModelViewSet):
     queryset = Faction.objects.filter(is_deleted=False)
     serializer_class = FactionSerializer
+    permission_classes = [IsAuthenticatedAndActive]

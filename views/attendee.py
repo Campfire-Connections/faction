@@ -15,6 +15,7 @@ from core.views.base import (
     BaseFormView,
     BaseDashboardView,
 )
+from core.api import BaseModelViewSet
 from core.mixins.views import FactionScopedMixin, PortalPermissionMixin, LoginRequiredMixin
 from core.dashboard_data import (
     get_attendee_resources,
@@ -144,9 +145,10 @@ class DeleteView(LoginRequiredMixin, BaseDeleteView):
         )
 
 
-class AttendeeViewSet(viewsets.ModelViewSet):
+class AttendeeViewSet(BaseModelViewSet):
     queryset = AttendeeProfile.objects.select_related("user", "faction")
     serializer_class = AttendeeSerializer
+    permission_classes = []
 
 
 class ShowView(BaseDetailView):

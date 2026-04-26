@@ -9,7 +9,17 @@ from .models import Faction, LeaderProfile, AttendeeProfile
 class FactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Faction
-        fields = "__all__"
+        fields = (
+            "id",
+            "name",
+            "description",
+            "slug",
+            "abbreviation",
+            "organization",
+            "parent",
+            "is_active",
+        )
+        read_only_fields = ("id", "slug")
 
 
 class LeaderSerializer(BaseProfileSerializer):

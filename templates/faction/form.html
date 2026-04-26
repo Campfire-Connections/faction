@@ -1,13 +1,7 @@
-<!-- faction/templates/faction/form.html -->
-{% extends "base/layout.html" %}
+{% extends 'base/form.html' %}
 
-{% block content %}
-  <section class="card">
-    <h1>Create A Faction</h1>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
-  </section>
-{% endblock %}
+{% block form_title %}{% if object %}Edit Faction{% else %}New Faction{% endif %}{% endblock form_title %}
+{% block form_heading %}{% if object %}Edit Faction{% else %}New Faction{% endif %}{% endblock form_heading %}
+{% block submit_label %}{% if object %}Save Faction{% else %}Create Faction{% endif %}{% endblock submit_label %}
+{% block cancel_url %}{% url 'factions:index' %}{% endblock cancel_url %}
+{% block cancel_url_bottom %}{% url 'factions:index' %}{% endblock cancel_url_bottom %}

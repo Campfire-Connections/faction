@@ -1,20 +1,7 @@
-{% extends 'base/layout.html' %}
-{% block content %}
-<div class="container">
-    <br><br><br><br>
-    <h1>{% if object %}Update Attendee{% else %}Add Attendee{% endif %}</h1>
-    <section class="card">
-        <form method="post">
-            {% csrf_token %}
-            <section>
-                <h2>Attendee Details</h2>
-                <hr>
-                {{ form.as_p }}
-            </section>
-            <button type="submit" class="btn btn-primary">
-                {% if object %}Save Changes{% else %}Create Attendee{% endif %}
-            </button>
-        </form>
-    </section>
-</div>
-{% endblock %}
+{% extends 'base/form.html' %}
+
+{% block form_title %}{% if object %}Edit Attendee{% else %}New Attendee{% endif %}{% endblock form_title %}
+{% block form_heading %}{% if object %}Edit Attendee{% else %}New Attendee{% endif %}{% endblock form_heading %}
+{% block submit_label %}{% if object %}Save Attendee{% else %}Create Attendee{% endif %}{% endblock submit_label %}
+{% block cancel_url %}{% url 'attendees:index' %}{% endblock cancel_url %}
+{% block cancel_url_bottom %}{% url 'attendees:index' %}{% endblock cancel_url_bottom %}

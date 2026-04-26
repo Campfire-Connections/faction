@@ -1,20 +1,7 @@
-<!-- faction/templates/leader/form.html -->
-{% extends 'base/layout.html' %}
-{% block content %}
-<div class="container">
-    <br><br><br><br>
-    <h1>{% if object %}Update Leader{% else %}Add Leader{% endif %}</h1>
-    <section class="card">
-    <form method="post">
-        {% csrf_token %}
-        <section>
-            <h2>Leader Details</h2>
-            <hr>
-            {{ form.as_p }}
-        </section>
+{% extends 'base/form.html' %}
 
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-    </form>
-</section>
-</div>
-{% endblock %}
+{% block form_title %}{% if object %}Edit Leader{% else %}New Leader{% endif %}{% endblock form_title %}
+{% block form_heading %}{% if object %}Edit Leader{% else %}New Leader{% endif %}{% endblock form_heading %}
+{% block submit_label %}{% if object %}Save Leader{% else %}Create Leader{% endif %}{% endblock submit_label %}
+{% block cancel_url %}{% url 'leaders:index' %}{% endblock cancel_url %}
+{% block cancel_url_bottom %}{% url 'leaders:index' %}{% endblock cancel_url_bottom %}

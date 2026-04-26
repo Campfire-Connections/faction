@@ -19,6 +19,8 @@ their leader and attendee profiles.
   centralized.
 - View classes reuse the shared base views so they automatically gain breadcrumb, action,
   and widget support.
+- Public leader, attendee, and faction list pages use the shared `base/list.html` shell with
+  consistent create actions and theme-aware table rendering.
 
 ## Tests
 

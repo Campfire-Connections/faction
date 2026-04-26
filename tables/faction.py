@@ -19,9 +19,9 @@ class FactionTable(ActionsColumnMixin, tables.Table):
     url_namespace = "factions"
     urls = {
         "add": {"name": "factions:new"},
-        "show": {"name": "factions:show", "kwargs": {"slug": "slug"}},
-        "edit": {"name": "factions:update", "kwargs": {"slug": "slug"}},
-        "delete": {"name": "factions:delete", "kwargs": {"slug": "slug"}},
+        "show": {"name": "factions:show", "kwargs": {"faction_slug": "slug"}},
+        "edit": {"name": "factions:update", "kwargs": {"faction_slug": "slug"}},
+        "delete": {"name": "factions:delete", "kwargs": {"faction_slug": "slug"}},
     }
 
 

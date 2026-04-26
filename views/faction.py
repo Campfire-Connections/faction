@@ -9,6 +9,7 @@ from django_tables2 import MultiTableMixin, SingleTableView
 
 from core.views.base import (
     BaseListView,
+    BaseTableListView,
     BaseCreateView,
     BaseUpdateView,
     BaseDeleteView,
@@ -80,10 +81,17 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
         return context
 
 
-class IndexView(BaseListView):
+class IndexView(BaseTableListView):
     model = Faction
+    table_class = FactionTable
     template_name = "faction/index.html"
     context_object_name = "factions"
+    page_title = "Factions"
+
+    def get_queryset(self):
+        return Faction.objects.filter(is_deleted=False).select_related(
+            "organization", "parent"
+        ).order_by("name")
 
 
 class CreateView(SlugMixin, BaseCreateView):

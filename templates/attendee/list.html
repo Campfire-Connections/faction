@@ -1,16 +1,16 @@
-{% extends "base/layout.html" %}
-{% load django_tables2 %}
+{% extends 'base/list.html' %}
 
-{% block title_text %}Attendees{% endblock %}
+{% block title_text %}
+    {% if faction %}
+        {{ faction }} Attendees
+    {% else %}
+        Attendees
+    {% endif %}
+{% endblock title_text %}
 
-{% block content %}
-<div class="bodyHeader clearfix d-flex justify-content-between align-items-center" style="margin-bottom:8px;">
-    <h1 class="mb-0">Attendees</h1>
-</div>
+{% block new_url %}{% url 'attendees:new' %}{% endblock new_url %}
+{% block new_label %}
+    New Attendee
+{% endblock new_label %}
 
-<div class="card">
-    <div class="card-body">
-        {% render_table table %}
-    </div>
-</div>
-{% endblock %}
+{% block table_caption %}<p class="sr-only">Attendees</p>{% endblock table_caption %}

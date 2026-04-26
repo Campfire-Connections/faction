@@ -105,10 +105,15 @@ class CreateView(SlugMixin, BaseCreateView):
         if not form.instance.slug:
             form.instance.slug = self.generate_slug("name")
 
-        # Attach to the user's organization
-        form.instance.organization = get_object_or_404(
-            Organization, pk=self.request.user.organization_id
-        )
+        if not form.instance.organization_id:
+            profile = (
+                self.request.user.get_profile()
+                if hasattr(self.request.user, "get_profile")
+                else None
+            )
+            organization = getattr(profile, "organization", None)
+            if organization:
+                form.instance.organization = organization
         return super().form_valid(form)
 
     def get_success_url(self):

@@ -77,7 +77,7 @@ class IndexView(FactionScopedMixin, BaseTableListView):
         faction = self.get_scope_faction()
         if faction:
             queryset = queryset.filter(faction=faction)
-        return queryset
+        return queryset.order_by("user__username")
 
 
 class CreateView(LoginRequiredMixin, FactionScopedMixin, BaseCreateView):

@@ -1,16 +1,10 @@
-{% extends "base/layout.html" %}
-{% load django_tables2 %}
+{% extends 'base/list.html' %}
 
-{% block title_text %}Leaders{% endblock %}
+{% block title_text %}Leaders{% endblock title_text %}
 
-{% block content %}
-<div class="bodyHeader clearfix d-flex justify-content-between align-items-center" style="margin-bottom:8px;">
-    <h1 class="mb-0">Leaders</h1>
-</div>
+{% block new_url %}{% url 'leaders:new' %}{% endblock new_url %}
+{% block new_label %}
+    New Leader
+{% endblock new_label %}
 
-<div class="card">
-    <div class="card-body">
-        {% render_table table %}
-    </div>
-</div>
-{% endblock %}
+{% block table_caption %}<p class="sr-only">Leaders</p>{% endblock table_caption %}

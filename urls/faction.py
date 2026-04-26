@@ -21,8 +21,6 @@ urlpatterns = [
     path("", IndexView.as_view(), name="index"),
     path("<slug:faction_slug>/manage/", ManageView.as_view(), name="manage"),
     path("new/", CreateView.as_view(), name="new"),
-    path("<slug:faction_slug>", ShowView.as_view(), name="show"),
-    path("<slug:faction_slug>/<slug:child_slug>/", ShowView.as_view(), name="show_child"),
     path("<slug:faction_slug>/new", CreateChildView.as_view(), name="new_child"),
     path("<slug:faction_slug>/roster/", RosterView.as_view(), name="roster"),
     path("<slug:faction_slug>/update/", UpdateView.as_view(), name="update"),
@@ -42,4 +40,6 @@ urlpatterns = [
         "<slug:faction_slug>/leaders/",
         include("faction.urls.leader", namespace="leaders"),
     ),
+    path("<slug:faction_slug>", ShowView.as_view(), name="show"),
+    path("<slug:faction_slug>/<slug:child_slug>/", ShowView.as_view(), name="show_child"),
 ]

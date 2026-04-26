@@ -53,7 +53,7 @@ class AttendeeTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
         if action == "add":
             if faction_slug:
                 return reverse("factions:attendees:new", kwargs={"faction_slug": faction_slug})
-            return None
+            return reverse("attendees:new")
 
         if action == "show":
             return reverse(

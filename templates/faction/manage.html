@@ -12,15 +12,18 @@
 
     {% for item in tables_with_names %}
     <section class="card">
-        <h2>
-            {{ item.name_plural|default:item.name }}
-            <a href="{{ item.create_url }}">
+        <h2 class="d-flex justify-content-between align-items-center gap-2">
+            <span>{{ item.name_plural|default:item.name }}</span>
+            {% if item.create_url and item.create_url != "#" %}
+            <a class="btn btn-sm btn-primary" href="{{ item.create_url }}">
                 {% if item.icon %}
                     <i class="fas {{ item.icon }}"></i>
                 {% else %}
                     <i class="fas fa-plus"></i>
                 {% endif %}
+                New {{ item.name|default:"Item"|title }}
             </a>
+            {% endif %}
         </h2>
         {% render_table item.table %}
     </section>

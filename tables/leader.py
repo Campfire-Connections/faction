@@ -55,7 +55,7 @@ class LeaderTable(ActionsColumnMixin, ActionUrlMixin, tables.Table):
         if action == "add":
             if faction_slug:
                 return reverse("factions:leaders:new", kwargs={"faction_slug": faction_slug})
-            return None
+            return reverse("leaders:new")
 
         if action == "show":
             return reverse(

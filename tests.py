@@ -5,6 +5,7 @@ from django.test import RequestFactory, TestCase
 from core.tests import BaseDomainTestCase, mute_profile_signals
 from core.utils import is_leader_admin
 from user.models import User
+from faction.models.attendee import AttendeeProfile
 from faction.models.leader import LeaderProfile
 from faction.views.faction import ManageView as FactionManageView
 from faction.forms.leader import LeaderForm
@@ -64,6 +65,38 @@ class SlugOnlyUrlTests(TestCase):
         # Smoke test to ensure slug-based routing is expected on show/update/delete
         view = FactionManageView()
         self.assertIsNone(getattr(view, "slug_url_kwarg", None))
+
+
+class ProfileAbsoluteUrlTests(BaseDomainTestCase):
+    def test_leader_profile_absolute_url_uses_project_route(self):
+        with mute_profile_signals():
+            user = User.objects.create_user(
+                username="leader.url",
+                password="pass12345",
+                user_type=User.UserType.LEADER,
+            )
+        profile = LeaderProfile.objects.create(
+            user=user,
+            organization=self.organization,
+            faction=self.faction,
+        )
+
+        self.assertEqual(profile.get_absolute_url(), f"/leaders/{profile.slug}/")
+
+    def test_attendee_profile_absolute_url_uses_project_route(self):
+        with mute_profile_signals():
+            user = User.objects.create_user(
+                username="attendee.url",
+                password="pass12345",
+                user_type=User.UserType.ATTENDEE,
+            )
+        profile = AttendeeProfile.objects.create(
+            user=user,
+            organization=self.organization,
+            faction=self.faction,
+        )
+
+        self.assertEqual(profile.get_absolute_url(), f"/attendees/{profile.slug}/")
 
 
 class LeaderFormAndSerializerTests(BaseDomainTestCase):

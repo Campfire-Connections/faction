@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 
+from core.policies import visible_factions_for_user
 from enrollment.models.faction import FactionEnrollment
 from enrollment.tables.faction import FactionEnrollmentTable
 from faction.models.attendee import AttendeeProfile
@@ -10,9 +11,12 @@ from faction.tables.faction import ChildFactionTable, FactionTable
 from faction.tables.leader import LeaderTable
 
 
-def active_factions():
+def active_factions(user=None):
+    if user is not None:
+        return visible_factions_for_user(user).select_related("organization", "parent")
     return Faction.objects.filter(is_deleted=False).select_related(
-        "organization", "parent"
+        "organization",
+        "parent",
     )
 
 

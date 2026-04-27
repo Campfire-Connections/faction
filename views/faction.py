@@ -71,7 +71,7 @@ class IndexView(BaseTableListView):
     page_title = "Factions"
 
     def get_queryset(self):
-        return active_factions().order_by("name")
+        return active_factions(self.request.user).order_by("name")
 
 
 class CreateView(SlugMixin, BaseCreateView):

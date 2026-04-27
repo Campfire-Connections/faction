@@ -1,12 +1,15 @@
 # faction/tests.py
 
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
 from core.tests import BaseDomainTestCase, mute_profile_signals
 from core.utils import is_leader_admin
 from user.models import User
+from faction.models import Faction
 from faction.models.attendee import AttendeeProfile
 from faction.models.leader import LeaderProfile
+from faction.selectors import active_factions
 from faction.views.faction import ManageView as FactionManageView
 from faction.forms.leader import LeaderForm
 from faction.serializers import LeaderSerializer
@@ -58,6 +61,67 @@ class LeaderAdminPermissionTests(BaseDomainTestCase):
         view = FactionManageView()
         view.request = request
         self.assertFalse(view.test_func())
+
+
+class FactionAccessScopeTests(BaseDomainTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.child_faction = Faction.objects.create(
+            name="Eagle Patrol Foxes",
+            organization=cls.organization,
+            parent=cls.faction,
+        )
+        cls.other_org = cls.parent_org.__class__.objects.create(
+            name="Other Council",
+            abbreviation="OC",
+            max_depth=5,
+        )
+        cls.other_faction = Faction.objects.create(
+            name="Other Faction",
+            organization=cls.other_org,
+        )
+        with mute_profile_signals():
+            cls.admin_user = User.objects.create_superuser(
+                username="faction.scope.admin",
+                email="faction.scope.admin@example.com",
+                password="pass12345",
+            )
+            cls.leader_user = User.objects.create_user(
+                username="faction.scope.leader",
+                password="pass12345",
+                user_type=User.UserType.LEADER,
+            )
+        LeaderProfile.objects.create(
+            user=cls.leader_user,
+            organization=cls.organization,
+            faction=cls.faction,
+            is_admin=True,
+        )
+
+    def test_faction_selector_scopes_leader_to_tree(self):
+        factions = active_factions(self.leader_user)
+
+        self.assertIn(self.faction, factions)
+        self.assertIn(self.child_faction, factions)
+        self.assertNotIn(self.other_faction, factions)
+
+    def test_faction_index_scopes_leader_results(self):
+        self.client.force_login(self.leader_user)
+        response = self.client.get(reverse("factions:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.faction.name)
+        self.assertContains(response, self.child_faction.name)
+        self.assertNotContains(response, self.other_faction.name)
+
+    def test_faction_index_keeps_admin_global_visibility(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("factions:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.faction.name)
+        self.assertContains(response, self.other_faction.name)
 
 
 class SlugOnlyUrlTests(TestCase):

@@ -5,10 +5,9 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from rest_framework import viewsets
 from django.views.generic import TemplateView
-from django_tables2 import MultiTableMixin, SingleTableView
+from django_tables2 import SingleTableView
 
 from core.views.base import (
-    BaseListView,
     BaseTableListView,
     BaseCreateView,
     BaseUpdateView,
@@ -19,27 +18,27 @@ from core.views.base import (
     BaseIndexByFilterTableView,
     BaseDetailView,
 )
-from core.api import BaseModelViewSet
 from core.permissions import IsAuthenticatedAndActive
 from core.mixins.models import SoftDeleteMixin, SlugMixin, TrackChangesMixin
 from core.mixins.views import LoginRequiredMixin, PortalPermissionMixin
-from core.views.base_helpers import build_tables_from_config
 from core.utils import get_leader_profile, is_leader_admin
 
 from organization.models.organization import Organization
-from enrollment.models.faction import FactionEnrollment
-from user.models import User
 
 from ..models.faction import Faction
 from ..models.leader import LeaderProfile
-from ..models.attendee import AttendeeProfile
 from ..forms.faction import FactionForm, ChildFactionForm
-from ..tables.faction import FactionTable, ChildFactionTable
-from enrollment.tables.faction import FactionEnrollmentTable
-from ..tables.attendee import AttendeeTable
-from ..tables.leader import LeaderTable
+from ..tables.faction import FactionTable
 from ..tables.roster import RosterTable
 from ..serializers import FactionSerializer
+from ..selectors import (
+    active_factions,
+    child_factions_for_faction,
+    faction_manage_tables_config,
+    get_active_faction_by_id,
+    get_active_faction_by_slug,
+    roster_for_faction_tree,
+)
 
 
 class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
@@ -50,27 +49,10 @@ class RosterView(LoginRequiredMixin, PortalPermissionMixin, SingleTableView):
 
     def get_faction(self):
         slug = self.kwargs.get("faction_slug") or self.kwargs.get("slug")
-        return get_object_or_404(Faction, slug=slug, is_deleted=False)
-
-    def _faction_and_descendants(self, faction):
-        ids = []
-        stack = [faction]
-        while stack:
-            current = stack.pop()
-            ids.append(current.id)
-            stack.extend(list(current.children.all()))
-        return ids
+        return get_active_faction_by_slug(slug)
 
     def get_table_data(self):
-        faction = self.get_faction()
-        faction_ids = self._faction_and_descendants(faction)
-        leaders_qs = LeaderProfile.objects.filter(
-            faction_id__in=faction_ids
-        ).select_related("user", "organization", "faction")
-        attendees_qs = AttendeeProfile.objects.filter(
-            faction_id__in=faction_ids
-        ).select_related("user", "organization", "faction")
-        return list(leaders_qs) + list(attendees_qs)
+        return roster_for_faction_tree(self.get_faction())
 
     def get_queryset(self):
         return self.get_table_data()
@@ -89,9 +71,7 @@ class IndexView(BaseTableListView):
     page_title = "Factions"
 
     def get_queryset(self):
-        return Faction.objects.filter(is_deleted=False).select_related(
-            "organization", "parent"
-        ).order_by("name")
+        return active_factions().order_by("name")
 
 
 class CreateView(SlugMixin, BaseCreateView):
@@ -165,52 +145,13 @@ class ManageView(LoginRequiredMixin, PortalPermissionMixin, BaseManageView):
         """Return the faction associated with the leader."""
         slug = self.kwargs.get("faction_slug")
         if slug:
-            return get_object_or_404(Faction, slug=slug, is_deleted=False)
+            return get_active_faction_by_slug(slug)
         profile = get_leader_profile(self.request.user)
         faction_id = getattr(profile, "faction_id", None)
-        return get_object_or_404(Faction, id=faction_id, is_deleted=False)
+        return get_active_faction_by_id(faction_id)
 
     def get_tables_config(self):
-        faction = self.get_scope_object()
-
-        leaders_qs = LeaderProfile.objects.filter(faction=faction).select_related("user")
-
-        attendee_ids = []
-        stack = [faction]
-        while stack:
-            current = stack.pop()
-            attendee_ids.append(current.id)
-            stack.extend(list(current.children.all()))
-        attendees_qs = AttendeeProfile.objects.filter(
-            faction_id__in=attendee_ids
-        ).select_related("user")
-
-        child_factions_qs = Faction.objects.filter(
-            parent=faction, is_deleted=False
-        )
-
-        return {
-            "leaders": {
-                "class": LeaderTable,
-                "queryset": leaders_qs,
-                "context": {"faction_slug": faction.slug},
-            },
-            "attendees": {
-                "class": AttendeeTable,
-                "queryset": attendees_qs,
-                "context": {"faction_slug": faction.slug},
-            },
-            "enrollments": {
-                "class": FactionEnrollmentTable,
-                "queryset": FactionEnrollment.objects.filter(faction=faction),
-                "context": {"faction_slug": faction.slug},
-            },
-            "child_factions": {
-                "class": ChildFactionTable,
-                "queryset": child_factions_qs,
-                "context": {"faction_slug": faction.slug},
-            },
-        }
+        return faction_manage_tables_config(self.get_scope_object())
 
     def get_context_data(self, **kwargs):
         # Bypass MultiTableMixin's get_context_data, which expects self.tables, and
@@ -261,7 +202,7 @@ class ShowView(BaseSlugOrPkObjectMixin, BaseDetailView):
         context = super().get_context_data(**kwargs)
         faction = context.get("faction")
         if faction:
-            context["child_factions"] = faction.children.filter(is_deleted=False)
+            context["child_factions"] = child_factions_for_faction(faction)
             context["parent_faction"] = faction.parent
         return context
 

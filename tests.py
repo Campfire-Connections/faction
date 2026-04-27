@@ -62,6 +62,16 @@ class LeaderAdminPermissionTests(BaseDomainTestCase):
         view.request = request
         self.assertFalse(view.test_func())
 
+    def test_faction_manage_page_renders_create_actions(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.get(
+            reverse("factions:manage", kwargs={"faction_slug": self.faction.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "New Leader")
+        self.assertContains(response, "New Attendee")
+
 
 class FactionAccessScopeTests(BaseDomainTestCase):
     @classmethod

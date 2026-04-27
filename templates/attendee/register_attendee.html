@@ -1,18 +1,11 @@
-<!-- templates/register_attendee.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register Attendee</title>
-</head>
-<body>
-    <h2>Register Attendee</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Register</button>
-    </form>
-    <a
-href="{% url 'login' %}">Already have an account? Login</a>
+{% extends "base/form.html" %}
 
-</body>
-</html>
+{% block form_title %}Register Attendee{% endblock form_title %}
+{% block form_heading %}Register Attendee{% endblock form_heading %}
+{% block submit_label %}Register{% endblock submit_label %}
+
+{% block form_subtitle %}
+<p class="text-muted mb-0">
+    Already have an account? <a href="{% url 'login' %}">Log in</a>.
+</p>
+{% endblock form_subtitle %}

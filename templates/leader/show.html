@@ -1,19 +1,88 @@
-<!-- faction/templates/leader/show.html -->
 {% extends 'base/show.html' %}
 
+{% block title_text %}{{ profile_user.get_full_name|default:profile_user.username|title }}{% endblock title_text %}
+{% block object_identifier %}Leader{% endblock object_identifier %}
+{% block object_name %}{{ profile_user.get_full_name|default:profile_user.username|title }}{% endblock object_name %}
 {% block object_details %}
-    <div class="leader-details">
-        <p><strong>Name:</strong> {{ leader.get_full_name }}</p>
-        <p><strong>Address:</strong> {{ leader.address }}</p>
+    {% if profile_faction %}
+        {{ profile_faction.name }}{% if leader.is_admin %} - Faction Admin{% endif %}
+    {% elif leader.organization %}
+        {{ leader.organization.name }}
+    {% else %}
+        Profile
+    {% endif %}
+{% endblock object_details %}
 
-        {% if leader.profile.faction %}
-        <p><strong>Faction:</strong> {{leader.profile.faction.abbreviation}}</p>
-        {% endif %}
+{% block object_nav_tabs %}
+    {{ block.super }}
+    {% if can_view_enrollments %}
+    <li class="nav-item" role="presentation">
+        <a href="#enrollmentsTab" id="tabs_tabEnrollments" class="nav-link" data-bs-toggle="tab">Enrollments</a>
+    </li>
+    {% endif %}
+{% endblock object_nav_tabs %}
 
-        {% if leader.profile %}
-        <h3>Profile Information</h3>
-        <p><strong>Faction (Profile):</strong> {{ leader.profile.faction.name }}</p>
-        <!-- Additional profile fields -->
+{% block card_body_wrapper %}
+<div id="overviewTab" class="tab-pane fade show active">
+    {% block card_body_overview %}
+    <div class="card-body" id="overviewCard">
+        <h2 class="no-border card-title section-title">Profile</h2>
+        <dl class="detail-list">
+            <dt>Name</dt>
+            <dd>{{ profile_user.get_full_name|default:profile_user.username|title }}</dd>
+            <dt>Username</dt>
+            <dd>{{ profile_user.username }}</dd>
+            <dt>Email</dt>
+            <dd>{{ profile_user.email|default:"Not provided" }}</dd>
+            <dt>Faction</dt>
+            <dd>{{ profile_faction|default:"Unassigned" }}</dd>
+            <dt>Organization</dt>
+            <dd>{{ leader.organization|default:"Unassigned" }}</dd>
+            <dt>Role</dt>
+            <dd>{% if leader.is_admin %}Faction Admin{% else %}Leader{% endif %}</dd>
+            <dt>Address</dt>
+            <dd>{{ leader.address|default:"Not provided" }}</dd>
+        </dl>
+    </div>
+    {% endblock card_body_overview %}
+</div>
+
+{% if can_view_enrollments %}
+<div id="enrollmentsTab" class="tab-pane fade">
+    <div class="card-body" id="enrollmentsCard">
+        <h2 class="no-border card-title section-title">Enrollments</h2>
+        {% if leader_enrollments %}
+        <div class="table-shell" tabindex="0" aria-label="Leader enrollments table">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Enrollment</th>
+                        <th scope="col">Faction</th>
+                        <th scope="col">Dates</th>
+                        <th scope="col">Quarters</th>
+                        <th scope="col">Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrollment in leader_enrollments %}
+                    <tr>
+                        <td>{{ enrollment.faction_enrollment }}</td>
+                        <td>{{ enrollment.faction_enrollment.faction }}</td>
+                        <td>{{ enrollment.start|default:"TBD" }} - {{ enrollment.end|default:"TBD" }}</td>
+                        <td>{{ enrollment.quarters|default:"Unassigned" }}</td>
+                        <td>{{ enrollment.role|default:"Leader" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="fas fa-calendar-xmark" aria-hidden="true"></span>
+            <p>No leader enrollments are recorded.</p>
+        </div>
         {% endif %}
     </div>
-{% endblock %}
+</div>
+{% endif %}
+{% endblock card_body_wrapper %}

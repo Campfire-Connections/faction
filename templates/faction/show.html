@@ -1,19 +1,265 @@
-{% extends "base/layout.html" %}
-{% block content %}
-<div class="container mt-4">
-    <h1>{{ faction.name }}</h1>
-    {% if parent_faction %}
-        <p class="text-muted">Parent faction: <a href="{% url 'factions:show' faction_slug=parent_faction.slug %}">{{ parent_faction.name }}</a></p>
-    {% endif %}
-    {% if faction.description %}<p>{{ faction.description }}</p>{% endif %}
+{% extends "base/show.html" %}
 
-    {% if child_factions %}
-        <h3>Subfactions</h3>
-        <ul>
-            {% for child in child_factions %}
-                <li><a href="{% url 'factions:show_child' faction_slug=faction.slug child_slug=child.slug %}">{{ child.name }}</a></li>
-            {% endfor %}
-        </ul>
+{% block title_text %}{{ faction.name }}{% endblock title_text %}
+{% block object_name %}{{ faction.name }}{% endblock object_name %}
+{% block object_identifier %}{% if parent_faction %}Sub-faction{% else %}Root Faction{% endif %}{% endblock object_identifier %}
+{% block object_details %}
+    {{ faction.organization.name }}
+    {% if parent_faction %} - Parent: {{ parent_faction.name }}{% endif %}
+{% endblock object_details %}
+
+{% block object_back_url %}{% url 'factions:index' %}{% endblock object_back_url %}
+{% block object_edit_action %}
+    {% if can_manage_faction_page %}
+    <a class="btn btn-primary" href="{% url 'factions:update' faction_slug=faction.slug %}">
+        <span class="fas fa-edit" aria-hidden="true"></span>
+        Edit
+    </a>
     {% endif %}
+{% endblock object_edit_action %}
+{% block object_delete_action %}
+    {% if can_manage_faction_page %}
+    <a class="btn btn-outline-danger" href="{% url 'factions:delete' faction_slug=faction.slug %}">
+        <span class="fas fa-trash" aria-hidden="true"></span>
+        Delete
+    </a>
+    {% endif %}
+{% endblock object_delete_action %}
+{% block object_secondary_actions %}
+    {% if can_manage_faction_page %}
+    <a class="btn btn-outline-primary" href="{% url 'factions:manage' faction_slug=faction.slug %}">
+        <span class="fas fa-sliders" aria-hidden="true"></span>
+        Manage
+    </a>
+    <a class="btn btn-outline-primary" href="{% url 'factions:new_child' faction_slug=faction.slug %}">
+        <span class="fas fa-plus" aria-hidden="true"></span>
+        Sub-faction
+    </a>
+    {% endif %}
+{% endblock object_secondary_actions %}
+
+{% block object_nav_tabs %}
+    {{ block.super }}
+    <li class="nav-item" role="presentation">
+        <a href="#peopleTab" id="tabs_tabPeople" class="nav-link" data-bs-toggle="tab">People</a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a href="#enrollmentsTab" id="tabs_tabEnrollments" class="nav-link" data-bs-toggle="tab">Enrollments</a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a href="#hierarchyTab" id="tabs_tabHierarchy" class="nav-link" data-bs-toggle="tab">Hierarchy</a>
+    </li>
+{% endblock object_nav_tabs %}
+
+{% block card_body_wrapper %}
+<div id="overviewTab" class="tab-pane fade show active">
+    {% block card_body_overview %}
+    <div class="card-body" id="overviewCard">
+        <div class="profile-stat-grid faction-stat-grid" aria-label="Faction summary">
+            <div class="metric-card">
+                <span class="metric-value">{{ faction_stats.attendee_count }}</span>
+                <span class="metric-label">Attendees</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ faction_stats.leader_count }}</span>
+                <span class="metric-label">Leaders</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ faction_stats.child_count }}</span>
+                <span class="metric-label">Direct Sub-factions</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ faction_stats.enrollment_count }}</span>
+                <span class="metric-label">Enrollments</span>
+            </div>
+        </div>
+
+        <h2 class="no-border card-title section-title">Faction Summary</h2>
+        <div class="field-value object-description">
+            {{ faction.description|default:"No description available." }}
+        </div>
+
+        <dl class="detail-list mt-3">
+            <dt>Organization</dt>
+            <dd>{{ faction.organization }}</dd>
+            <dt>Root Faction</dt>
+            <dd>{{ root_faction.name }}</dd>
+            <dt>Parent</dt>
+            <dd>{{ parent_faction|default:"None" }}</dd>
+            <dt>Abbreviation</dt>
+            <dd>{{ faction.abbreviation|default:"Not set" }}</dd>
+            <dt>Tree Depth</dt>
+            <dd>{{ faction.get_depth }}</dd>
+            <dt>Total Sub-factions</dt>
+            <dd>{{ faction_stats.descendant_count }}</dd>
+        </dl>
+    </div>
+    {% endblock card_body_overview %}
 </div>
-{% endblock %}
+
+<div id="peopleTab" class="tab-pane fade">
+    <div class="card-body" id="peopleCard">
+        <div class="content-grid">
+            <section class="content-card">
+                <div class="section-heading">
+                    <h2 class="no-border card-title section-title">Leaders</h2>
+                    {% if can_manage_faction_page %}
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'factions:leaders:new' faction_slug=faction.slug %}">
+                        <span class="fas fa-user-plus" aria-hidden="true"></span>
+                        New Leader
+                    </a>
+                    {% endif %}
+                </div>
+                {% if leaders %}
+                <div class="table-shell" tabindex="0" aria-label="Faction leaders table">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leader in leaders %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'factions:leaders:show' faction_slug=leader.faction.slug slug=leader.slug %}">
+                                        {{ leader.user.get_full_name|default:leader.user.username|title }}
+                                    </a>
+                                </td>
+                                <td>{{ leader.user.email|default:"Not provided" }}</td>
+                                <td>{% if leader.is_admin %}Faction Admin{% else %}Leader{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <span class="fas fa-user-shield" aria-hidden="true"></span>
+                    <p>No leaders are assigned to this faction.</p>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="content-card">
+                <div class="section-heading">
+                    <h2 class="no-border card-title section-title">Attendees</h2>
+                    {% if can_manage_faction_page %}
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'factions:attendees:new' faction_slug=faction.slug %}">
+                        <span class="fas fa-user-plus" aria-hidden="true"></span>
+                        New Attendee
+                    </a>
+                    {% endif %}
+                </div>
+                {% if attendees %}
+                <div class="table-shell" tabindex="0" aria-label="Faction attendees table">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Faction</th>
+                                <th scope="col">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendee in attendees %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'factions:attendees:show' faction_slug=attendee.faction.slug slug=attendee.slug %}">
+                                        {{ attendee.user.get_full_name|default:attendee.user.username|title }}
+                                    </a>
+                                </td>
+                                <td>{{ attendee.faction.name|default:"Unassigned" }}</td>
+                                <td>{{ attendee.user.email|default:"Not provided" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <span class="fas fa-users" aria-hidden="true"></span>
+                    <p>No attendees are assigned in this faction tree.</p>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+</div>
+
+<div id="enrollmentsTab" class="tab-pane fade">
+    <div class="card-body" id="enrollmentsCard">
+        <div class="section-heading">
+            <h2 class="no-border card-title section-title">Faction Enrollments</h2>
+            {% if can_manage_faction_page %}
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'factions:enrollments:new' faction_slug=faction.slug %}">
+                <span class="fas fa-calendar-plus" aria-hidden="true"></span>
+                New Enrollment
+            </a>
+            {% endif %}
+        </div>
+        {% if faction_enrollments %}
+        <div class="table-shell" tabindex="0" aria-label="Faction enrollments table">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Enrollment</th>
+                        <th scope="col">Facility</th>
+                        <th scope="col">Week</th>
+                        <th scope="col">Dates</th>
+                        <th scope="col">Quarters</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrollment in faction_enrollments %}
+                    <tr>
+                        <td>{{ enrollment }}</td>
+                        <td>{{ enrollment.facility_enrollment.facility }}</td>
+                        <td>{{ enrollment.week }}</td>
+                        <td>{{ enrollment.start }} - {{ enrollment.end }}</td>
+                        <td>{{ enrollment.quarters }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="fas fa-calendar-xmark" aria-hidden="true"></span>
+            <p>No faction enrollments are recorded.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="hierarchyTab" class="tab-pane fade">
+    <div class="card-body" id="hierarchyCard">
+        <div class="section-heading">
+            <h2 class="no-border card-title section-title">Sub-factions</h2>
+            {% if can_manage_faction_page %}
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'factions:new_child' faction_slug=faction.slug %}">
+                <span class="fas fa-plus" aria-hidden="true"></span>
+                New Sub-faction
+            </a>
+            {% endif %}
+        </div>
+        {% if child_factions %}
+        <div class="list-group list-group-flush">
+            {% for child in child_factions %}
+                <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2" href="{% url 'factions:show_child' faction_slug=faction.slug child_slug=child.slug %}">
+                    <span>{{ child.name }}</span>
+                    <span class="text-muted">{{ child.member_count }} members</span>
+                </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <span class="fas fa-sitemap" aria-hidden="true"></span>
+            <p>No sub-factions have been created.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock card_body_wrapper %}

@@ -168,6 +168,44 @@ class ShowView(BaseDetailView):
     template_name = "leader/show.html"
     context_object_name = "leader"
 
+    @staticmethod
+    def factions_share_chain(first_faction, second_faction):
+        if not first_faction or not second_faction:
+            return False
+        return first_faction.get_root_faction().pk == second_faction.get_root_faction().pk
+
+    def can_view_enrollments(self, leader):
+        user = self.request.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+        if getattr(user, "is_superuser", False) or leader.user_id == user.id:
+            return True
+        viewer_profile = get_leader_profile(user)
+        return bool(
+            viewer_profile
+            and self.factions_share_chain(viewer_profile.faction, leader.faction)
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        leader = self.object
+        can_view_enrollments = self.can_view_enrollments(leader)
+        enrollments = LeaderEnrollment.objects.none()
+        if can_view_enrollments:
+            enrollments = LeaderEnrollment.objects.filter(leader=leader).select_related(
+                "faction_enrollment",
+                "faction_enrollment__faction",
+                "faction_enrollment__facility_enrollment",
+                "quarters",
+            )
+        context.update(
+            profile_user=leader.user,
+            profile_faction=leader.faction,
+            can_view_enrollments=can_view_enrollments,
+            leader_enrollments=enrollments,
+        )
+        return context
+
 
 class DashboardView(PortalPermissionMixin, FactionScopedMixin, BaseDashboardView):
     """

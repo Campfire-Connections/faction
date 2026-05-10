@@ -5,13 +5,10 @@
 {% block title_text %}Faction Roster{% endblock %}
 
 {% block content %}
-<div class="bodyHeader clearfix d-flex justify-content-between align-items-center" style="margin-bottom:8px;">
-    <h1 class="mb-0">{{ faction.name }} Roster</h1>
-</div>
-
-<div class="card">
-    <div class="card-body">
+<section class="content-card">
+    <h2>{{ faction.name }} Roster</h2>
+    <div class="table-shell" tabindex="0" aria-label="{{ faction.name }} roster">
         {% render_table table %}
     </div>
-</div>
+</section>
 {% endblock %}

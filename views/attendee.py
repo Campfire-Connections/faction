@@ -30,6 +30,7 @@ from enrollment.models.attendee import AttendeeEnrollment
 from enrollment.forms.attendee import AttendeeClassAssignmentForm, AttendeeQuartersAssignmentForm
 
 from ..models.attendee import AttendeeProfile
+from ..models.leader import LeaderProfile
 from faction.models.faction import Faction
 from ..serializers import AttendeeSerializer
 from ..forms.attendee import AttendeeForm, PromoteAttendeeForm, RegistrationForm
@@ -157,6 +158,51 @@ class ShowView(BaseDetailView):
     model = AttendeeProfile
     template_name = "attendee/show.html"
     context_object_name = "attendee"
+
+    @staticmethod
+    def factions_share_chain(first_faction, second_faction):
+        if not first_faction or not second_faction:
+            return False
+        return first_faction.get_root_faction().pk == second_faction.get_root_faction().pk
+
+    def can_view_enrollments(self, attendee):
+        user = self.request.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+        if getattr(user, "is_superuser", False) or attendee.user_id == user.id:
+            return True
+        leader_profile = LeaderProfile.objects.filter(user=user).select_related(
+            "faction",
+            "faction__parent",
+        ).first()
+        return bool(
+            leader_profile
+            and self.factions_share_chain(leader_profile.faction, attendee.faction)
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        attendee = self.object
+        can_view_enrollments = self.can_view_enrollments(attendee)
+        enrollments = AttendeeEnrollment.objects.none()
+        if can_view_enrollments:
+            enrollments = (
+                AttendeeEnrollment.objects.filter(attendee=attendee)
+                .select_related(
+                    "faction_enrollment",
+                    "faction_enrollment__faction",
+                    "faction_enrollment__facility_enrollment",
+                    "quarters",
+                )
+                .prefetch_related("faction_enrollment__facility_classes")
+            )
+        context.update(
+            profile_user=attendee.user,
+            profile_faction=attendee.faction,
+            can_view_enrollments=can_view_enrollments,
+            attendee_enrollments=enrollments,
+        )
+        return context
 
 
 class ManageView(PortalPermissionMixin, FactionScopedMixin, BaseManageView):

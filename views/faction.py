@@ -21,6 +21,7 @@ from core.views.base import (
 from core.permissions import IsAuthenticatedAndActive
 from core.mixins.models import SoftDeleteMixin, SlugMixin, TrackChangesMixin
 from core.mixins.views import LoginRequiredMixin, PortalPermissionMixin
+from core.policies import can_manage_faction
 from core.utils import get_leader_profile, is_leader_admin
 
 from organization.models.organization import Organization
@@ -34,9 +35,13 @@ from ..serializers import FactionSerializer
 from ..selectors import (
     active_factions,
     child_factions_for_faction,
+    enrollments_for_faction,
+    faction_descendant_ids,
     faction_manage_tables_config,
     get_active_faction_by_id,
     get_active_faction_by_slug,
+    attendees_for_faction_tree,
+    leaders_for_faction,
     roster_for_faction_tree,
 )
 
@@ -105,9 +110,11 @@ class UpdateView(TrackChangesMixin, BaseUpdateView):
     form_class = FactionForm
     template_name = "faction/form.html"
     success_message = "Faction updated successfully!"
-    success_url = reverse_lazy("factions:index")
     slug_field = "slug"
     slug_url_kwarg = "faction_slug"
+
+    def get_success_url(self):
+        return reverse("factions:show", kwargs={"faction_slug": self.object.slug})
 
 
 class DeleteView(SoftDeleteMixin, BaseDeleteView):
@@ -202,8 +209,45 @@ class ShowView(BaseSlugOrPkObjectMixin, BaseDetailView):
         context = super().get_context_data(**kwargs)
         faction = context.get("faction")
         if faction:
-            context["child_factions"] = child_factions_for_faction(faction)
+            descendant_ids = faction_descendant_ids(faction)
+            child_factions = child_factions_for_faction(faction).select_related(
+                "organization",
+                "parent",
+            )
+            leaders = leaders_for_faction(faction).select_related(
+                "organization",
+                "faction",
+                "user",
+            )
+            attendees = attendees_for_faction_tree(faction).select_related(
+                "organization",
+                "faction",
+                "user",
+            )
+            enrollments = enrollments_for_faction(faction).select_related(
+                "facility_enrollment",
+                "facility_enrollment__facility",
+                "faction",
+                "quarters",
+                "week",
+            )
+            context["child_factions"] = child_factions
             context["parent_faction"] = faction.parent
+            context["root_faction"] = faction.get_root_faction()
+            context["leaders"] = leaders
+            context["attendees"] = attendees
+            context["faction_enrollments"] = enrollments
+            context["can_manage_faction_page"] = can_manage_faction(
+                self.request.user,
+                faction,
+            )
+            context["faction_stats"] = {
+                "child_count": child_factions.count(),
+                "descendant_count": max(len(descendant_ids) - 1, 0),
+                "leader_count": leaders.count(),
+                "attendee_count": attendees.count(),
+                "enrollment_count": enrollments.count(),
+            }
         return context
 
 

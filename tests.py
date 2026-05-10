@@ -133,6 +133,128 @@ class FactionAccessScopeTests(BaseDomainTestCase):
         self.assertContains(response, self.faction.name)
         self.assertContains(response, self.other_faction.name)
 
+    def test_faction_detail_renders_complete_operational_page(self):
+        with mute_profile_signals():
+            attendee_user = User.objects.create_user(
+                username="faction.detail.attendee",
+                password="pass12345",
+                first_name="River",
+                last_name="Scout",
+                user_type=User.UserType.ATTENDEE,
+            )
+        AttendeeProfile.objects.create(
+            user=attendee_user,
+            organization=self.organization,
+            faction=self.child_faction,
+        )
+
+        self.client.force_login(self.leader_user)
+        response = self.client.get(
+            reverse("factions:show", kwargs={"faction_slug": self.faction.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Faction Summary")
+        self.assertContains(response, "People")
+        self.assertContains(response, "Enrollments")
+        self.assertContains(response, "Hierarchy")
+        self.assertContains(response, "Eagle Patrol Foxes")
+        self.assertContains(response, "River Scout")
+        self.assertContains(response, "Manage")
+        self.assertContains(response, "Sub-faction")
+
+    def test_faction_update_redirects_to_show_page(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            reverse("factions:update", kwargs={"faction_slug": self.faction.slug}),
+            {
+                "name": "Eagle Patrol",
+                "description": "Updated faction details.",
+                "organization": self.organization.pk,
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("factions:show", kwargs={"faction_slug": self.faction.slug}),
+        )
+        self.faction.refresh_from_db()
+        self.assertEqual(self.faction.description, "Updated faction details.")
+
+    def test_attendee_detail_renders_profile_and_enrollment_tabs_for_self(self):
+        with mute_profile_signals():
+            attendee_user = User.objects.create_user(
+                username="attendee.detail",
+                password="pass12345",
+                first_name="Avery",
+                last_name="Scout",
+                user_type=User.UserType.ATTENDEE,
+            )
+        attendee = AttendeeProfile.objects.create(
+            user=attendee_user,
+            organization=self.organization,
+            faction=self.faction,
+        )
+
+        self.client.force_login(attendee_user)
+        response = self.client.get(
+            reverse(
+                "factions:attendees:show",
+                kwargs={"faction_slug": self.faction.slug, "slug": attendee.slug},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Avery Scout")
+        self.assertContains(response, "Profile")
+        self.assertContains(response, "Enrollments")
+        self.assertContains(response, "Schedule")
+
+    def test_root_faction_leader_can_view_child_faction_attendee_enrollments(self):
+        with mute_profile_signals():
+            attendee_user = User.objects.create_user(
+                username="child.attendee.detail",
+                password="pass12345",
+                first_name="Casey",
+                last_name="Patrol",
+                user_type=User.UserType.ATTENDEE,
+            )
+        attendee = AttendeeProfile.objects.create(
+            user=attendee_user,
+            organization=self.organization,
+            faction=self.child_faction,
+        )
+
+        self.client.force_login(self.leader_user)
+        response = self.client.get(
+            reverse(
+                "factions:attendees:show",
+                kwargs={"faction_slug": self.faction.slug, "slug": attendee.slug},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Casey Patrol")
+        self.assertContains(response, "Enrollments")
+        self.assertContains(response, "Schedule")
+
+    def test_leader_detail_renders_profile_and_enrollment_tabs_for_faction_leader(self):
+        self.client.force_login(self.leader_user)
+        response = self.client.get(
+            reverse(
+                "factions:leaders:show",
+                kwargs={
+                    "faction_slug": self.faction.slug,
+                    "slug": self.leader_user.leaderprofile_profile.slug,
+                },
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Leader")
+        self.assertContains(response, "Profile")
+        self.assertContains(response, "Enrollments")
+
 
 class SlugOnlyUrlTests(TestCase):
     def test_slug_lookup_kwarg_present(self):

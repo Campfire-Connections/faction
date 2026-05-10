@@ -24,6 +24,9 @@ urlpatterns = [
     path("<slug:slug>/delete/", DeleteView.as_view(), name="delete"),
     path("<slug:slug>/promote/", PromoteView.as_view(), name="promote"),
     path("manage/", ManageView.as_view(), name="manage"),
-    path("<slug:slug>/enrollments/", include("enrollment.urls.attendee", namespace="enrollments")),
+    path(
+        "<slug:attendee_slug>/enrollments/",
+        include("enrollment.urls.attendee", namespace="enrollments"),
+    ),
 
 ]

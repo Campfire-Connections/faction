@@ -53,6 +53,20 @@
     <div class="card-body" id="enrollmentsCard">
         <h2 class="no-border card-title section-title">Enrollments</h2>
         {% if attendee_enrollments %}
+        <div class="profile-stat-grid" aria-label="Attendee enrollment summary">
+            <div class="metric-card">
+                <span class="metric-value">{{ attendee_enrollments|length }}</span>
+                <span class="metric-label">Enrollment{{ attendee_enrollments|length|pluralize }}</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ profile_faction|default:"Unassigned" }}</span>
+                <span class="metric-label">Faction</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-value">{{ attendee.organization|default:"Unassigned" }}</span>
+                <span class="metric-label">Organization</span>
+            </div>
+        </div>
         <div class="table-shell" tabindex="0" aria-label="Attendee enrollments table">
             <table class="table table-striped table-hover align-middle">
                 <thead>
@@ -92,13 +106,20 @@
         {% if attendee_enrollments %}
         <div class="content-grid">
             {% for enrollment in attendee_enrollments %}
-            <section class="content-card">
+            <section class="metric-card">
                 <h3>{{ enrollment.faction_enrollment }}</h3>
+                <p class="text-muted mb-2">
+                    {{ enrollment.start|default:"TBD" }} - {{ enrollment.end|default:"TBD" }}
+                    {% if enrollment.quarters %} · {{ enrollment.quarters }}{% endif %}
+                </p>
                 {% with classes=enrollment.classes %}
                     {% if classes %}
                     <ul class="list-group list-group-flush">
                         {% for assigned_class in classes %}
-                        <li class="list-group-item">{{ assigned_class }}</li>
+                        <li class="list-group-item d-flex justify-content-between gap-2">
+                            <span>{{ assigned_class }}</span>
+                            {% if assigned_class.period %}<span class="text-muted">{{ assigned_class.period }}</span>{% endif %}
+                        </li>
                         {% endfor %}
                     </ul>
                     {% else %}
